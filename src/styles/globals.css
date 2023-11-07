@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+input {
+  @apply block w-full h-10 text-sm bg-transparent rounded-md transition px-3 border shadow-sm;
+}
+
+select {
+  @apply block w-full h-10 text-sm bg-transparent pl-2 rounded-md border shadow-sm appearance-none;
+}
