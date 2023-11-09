@@ -3,7 +3,7 @@ type LayerRelativeTokenIdAndLever = {
   'lever-id': number;
 };
 
-type LayerTransformationProperties = {
+export type LayerTransformationProperties = {
   'fixed-position'?: {
     x: LayerRelativeTokenIdAndLever | number;
     y: LayerRelativeTokenIdAndLever | number;
@@ -21,9 +21,20 @@ type LayerTransformationProperties = {
     y: LayerRelativeTokenIdAndLever | number;
   };
   'orbit-rotation'?: LayerRelativeTokenIdAndLever;
-  'fixed-rotation'?: LayerRelativeTokenIdAndLever & {
-    multiplier?: number;
-  };
+  'fixed-rotation'?:
+    | (LayerRelativeTokenIdAndLever & {
+        multiplier?: number;
+      })
+    | {
+        multiplier: number;
+        random: {
+          max_value_inclusive: number;
+          handler: {
+            type: 'MODULO';
+            max_bound_inclusive: number;
+          };
+        };
+      };
   color?: {
     red?: LayerRelativeTokenIdAndLever;
     green?: LayerRelativeTokenIdAndLever;

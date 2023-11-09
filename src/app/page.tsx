@@ -4,7 +4,7 @@ import logo from '../../public/logo/async-logo.svg';
 import viewMasterArtIcon from '../../public/icons/solid-badged.svg';
 import updateLayerArtIcon from '../../public/icons/scrollreveal.svg';
 import reportIssueIcon from '../../public/icons/heart.svg';
-import MasterArtViewer from '@/components/master-art-viewer';
+import MasterArtViewer from '@/components/master-art-viewer/master-art-viewer';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import ToolBox from '@/components/tool-box';
 import { useState } from 'react';
