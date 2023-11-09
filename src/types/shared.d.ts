@@ -1,4 +1,4 @@
-type LayerRelativeTokenIdAndLever = {
+export type LayerRelativeTokenIdAndLever = {
   'token-id': number;
   'lever-id': number;
 };
@@ -43,6 +43,8 @@ export type LayerTransformationProperties = {
     hue?: LayerRelativeTokenIdAndLever;
     brightness?: LayerRelativeTokenIdAndLever;
     saturation?: LayerRelativeTokenIdAndLever;
+    // Only "Tribe" uses opacity https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-162
+    // opacity and alpha properties are the same
     opacity?: LayerRelativeTokenIdAndLever | number;
     multiply?: number;
     hardlight?: number;
@@ -142,6 +144,11 @@ export type ArtNFTMetadata = {
               label: string;
             } & LayerTransformationProperties)[];
           } & ActiveStateRule;
+        }
+      | {
+          id: string;
+          width: number;
+          height: number;
         }
     )[];
   };

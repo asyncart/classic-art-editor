@@ -11,6 +11,7 @@ const config: Config = {
       colors: {
         grey: '#666',
         red: '#c53535',
+        purple: '#4939ff',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

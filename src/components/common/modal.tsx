@@ -45,7 +45,7 @@ export const ModalSkeleton = (props: ModalSkeletonProps) => {
 type ModalProps = {
   title?: ReactNode;
   children: ReactNode;
-  onDismiss: () => void;
+  onClose: () => void;
   className?: string;
   titleClassName?: string;
 };
@@ -53,7 +53,7 @@ type ModalProps = {
 export const Modal = ({
   children,
   title = '',
-  onDismiss,
+  onClose,
   className = '',
   titleClassName = 'text-xl text-center leading-6 pt-5',
 }: ModalProps) => {
@@ -65,12 +65,12 @@ export const Modal = ({
   );
 
   return (
-    <ModalSkeleton onClose={onDismiss}>
+    <ModalSkeleton onClose={onClose}>
       <article className={classNames}>
         {/* z-10 is required so header is above possible Confetti */}
         <header className="relative z-10 mb-5">
           <button
-            onClick={onDismiss}
+            onClick={onClose}
             aria-label="Close"
             className="absolute top-0 right-0 text-lg text-black focus-visible:shadow-outline leading-none"
           >

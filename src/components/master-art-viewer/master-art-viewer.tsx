@@ -1,13 +1,17 @@
 import v1Abi from '@/abis/v1Abi';
 import v2Abi from '@/abis/v2Abi';
-import { Modal } from '@/components/common/modal';
+import { Modal, ModalSkeleton } from '@/components/common/modal';
 import Spinner from '@/components/common/spinner';
 import { getActiveStateIndex } from '@/components/master-art-viewer/utils';
 import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS } from '@/config';
 import useContract from '@/hooks/useContract';
-import { ArtNFTMetadata, LayerTransformationProperties } from '@/types/shared';
+import {
+  ArtNFTMetadata,
+  LayerRelativeTokenIdAndLever,
+  LayerTransformationProperties,
+} from '@/types/shared';
 import { getErrorMessage } from '@/utils';
-import { FormEvent, useEffect, useState } from 'react';
+import { CSSProperties, FormEvent, useEffect, useState } from 'react';
 import seedrandom from 'seedrandom';
 import { Address } from 'viem';
 import { getContract } from 'wagmi/actions';
@@ -25,11 +29,24 @@ export default function MasterArtViewer({
 }) {
   const [artInfo, setArtInfo] = useState<MasterArtInfo>();
 
+  if (!artInfo)
+    return (
+      <Modal title="View Master Artwork" onClose={onClose}>
+        <FormScreen onSubmit={setArtInfo} />
+      </Modal>
+    );
+
   return (
-    <Modal title="View Master Artwork" onDismiss={onClose}>
-      {!artInfo && <FormScreen onSubmit={setArtInfo} />}
-      {artInfo && <MasterArtScreen artInfo={artInfo} />}
-    </Modal>
+    <ModalSkeleton onClose={onClose}>
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="fixed top-0 right-0 z-10 text-3xl text-white leading-none m-8"
+      >
+        &#10005;
+      </button>
+      <MasterArtScreen artInfo={artInfo} />
+    </ModalSkeleton>
   );
 }
 
@@ -58,6 +75,8 @@ function FormScreen({ onSubmit }: FormScreenProps) {
 
     try {
       const tokenURI = await contract.read.tokenURI([BigInt(tokenId)]);
+      // V1 contract won't fail for non existent token, it will just return an empty string.
+      if (!tokenURI) throw new Error('URI query for nonexistent token');
       onSubmit({ tokenAddress, tokenId, tokenURI });
     } catch (error) {
       const message = getErrorMessage(error);
@@ -72,7 +91,12 @@ function FormScreen({ onSubmit }: FormScreenProps) {
         <label htmlFor="tokenAddress" className="text-sm font-bold">
           Token Address
         </label>
-        <select className="mt-1" name="tokenAddress" required>
+        <select
+          required
+          className="mt-1"
+          name="tokenAddress"
+          defaultValue={V2_CONTRACT_ADDRESS}
+        >
           {V1_CONTRACT_ADDRESS && (
             <option value={V1_CONTRACT_ADDRESS}>V1 Artwork</option>
           )}
@@ -115,11 +139,19 @@ type MasterArtScreenProps = {
   artInfo: MasterArtInfo;
 };
 
+// Good pieces for testing
+// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-786
+// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-343
 function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
-  const contract = useContract(artInfo.tokenAddress);
-  const [isLoading, setIsLoading] = useState(true);
+  const [layersToRender, setLayerToRender] =
+    useState<{ id: string; uri: string; style: CSSProperties }[]>();
 
   const getLayersToRender = async (metadata: ArtNFTMetadata) => {
+    const contract = getContract({
+      address: artInfo.tokenAddress,
+      abi: artInfo.tokenAddress === V1_CONTRACT_ADDRESS ? v1Abi : v2Abi,
+    });
+
     const layers: {
       id: string;
       activeStateURI: string;
@@ -127,6 +159,9 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
     }[] = [];
 
     for (const layer of metadata.layout.layers) {
+      // Skip empty layer (was usually the first layer in a piece, required by Jimp on renderer server)
+      if (!('uri' in layer) && !('states' in layer)) continue;
+
       // Check if it's static layer / only one state
       if ('uri' in layer) {
         const { id, label, uri, ...transformationProperties } = layer;
@@ -137,7 +172,6 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
       const activeStateIndex = await getActiveStateIndex(
         layer,
         artInfo.tokenId,
-        // @ts-ignore
         contract
       );
       const state = layer.states.options[activeStateIndex];
@@ -152,9 +186,125 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
     return layers;
   };
 
-  const renderLayers = async (
+  const readTransformationProperty = async (
+    property: LayerRelativeTokenIdAndLever | number
+  ) => {
+    if (typeof property === 'number') return property;
+    const contract = getContract({
+      address: artInfo.tokenAddress,
+      abi: artInfo.tokenAddress === V1_CONTRACT_ADDRESS ? v1Abi : v2Abi,
+    });
+
+    const layerTokenId = property['token-id'] + artInfo.tokenId;
+    const controlTokens = await contract.read.getControlToken([
+      BigInt(layerTokenId),
+    ]);
+    return Number(controlTokens[2 + property['lever-id'] * 3]);
+  };
+
+  const getLayersWithStyle = async (
     layers: Awaited<ReturnType<typeof getLayersToRender>>
   ) => {
+    const layersWithStyle: typeof layersToRender = [];
+    for (const layer of layers) {
+      const filters = [];
+      const transforms = [];
+      const style: CSSProperties = {};
+
+      const isLayerVisible = await readTransformationProperty(
+        layer.transformationProperties.visible || 1
+      );
+      if (!isLayerVisible) continue;
+
+      const { x = 100, y = 100 } = layer.transformationProperties.scale || {};
+      let scaleX = await readTransformationProperty(x);
+      let scaleY = await readTransformationProperty(y);
+
+      if (layer.transformationProperties.mirror) {
+        const { x, y } = layer.transformationProperties.mirror;
+        const mirrorX = await readTransformationProperty(x);
+        const mirrorY = await readTransformationProperty(y);
+        if (mirrorX) scaleX = -scaleX;
+        if (mirrorY) scaleY = -scaleY;
+      }
+
+      transforms.push(`scale(${scaleX / 100}, ${scaleY / 100})`);
+
+      if (layer.transformationProperties['fixed-rotation']) {
+        const fixedRotation = layer.transformationProperties['fixed-rotation'];
+        if ('random' in fixedRotation) {
+          const date = new Date();
+          const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
+          const maxValueExclusive =
+            fixedRotation.random.max_value_inclusive + 1;
+          const degrees =
+            Math.floor(seedrandom(key)() * maxValueExclusive) *
+            fixedRotation.multiplier;
+          transforms.push(`rotate(${degrees}deg)`);
+        } else {
+          const degrees = await readTransformationProperty(fixedRotation);
+          transforms.push(
+            `rotate(${degrees * (fixedRotation.multiplier || 1)}deg)`
+          );
+        }
+      }
+
+      if (layer.transformationProperties.color?.alpha) {
+        style.opacity =
+          (await readTransformationProperty(
+            layer.transformationProperties.color?.alpha
+          )) / 100;
+      }
+
+      if (layer.transformationProperties.color?.hue) {
+        const degrees = await readTransformationProperty(
+          layer.transformationProperties.color?.hue
+        );
+        filters.push(`hue-rotate(${degrees}deg)`);
+      }
+
+      if (layer.transformationProperties.color?.brightness) {
+        const brightness = await readTransformationProperty(
+          layer.transformationProperties.color?.brightness
+        );
+        if (brightness !== 0) filters.push(`brightness(${brightness})`);
+      }
+
+      if (layer.transformationProperties.color?.saturation) {
+        const saturation = await readTransformationProperty(
+          layer.transformationProperties.color?.saturation
+        );
+        if (saturation !== 0) filters.push(`saturate(${saturation})`);
+      }
+
+      if (layer.transformationProperties.color?.opacity) {
+        style.opacity =
+          (await readTransformationProperty(
+            layer.transformationProperties.color?.opacity
+          )) / 100;
+      }
+
+      if (layer.transformationProperties.color?.multiply)
+        style.mixBlendMode = 'multiply';
+      if (layer.transformationProperties.color?.hardlight)
+        style.mixBlendMode = 'hard-light';
+      if (layer.transformationProperties.color?.lighten)
+        style.mixBlendMode = 'lighten';
+      if (layer.transformationProperties.color?.overlay)
+        style.mixBlendMode = 'overlay';
+      if (layer.transformationProperties.color?.difference)
+        style.mixBlendMode = 'difference';
+      if (layer.transformationProperties.color?.exclusion)
+        style.mixBlendMode = 'exclusion';
+      if (layer.transformationProperties.color?.screen)
+        style.mixBlendMode = 'screen';
+
+      style.filter = filters.join(' ');
+      style.transform = transforms.join(' ');
+
+      layersWithStyle.push({ id: layer.id, uri: layer.activeStateURI, style });
+    }
+    return layersWithStyle;
   };
 
   useEffect(() => {
@@ -165,7 +315,10 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
         if (!isMounted) return;
         getLayersToRender(metadata).then(layers => {
           if (!isMounted) return;
-          renderLayers(layers);
+          getLayersWithStyle(layers).then(layersWithStyle => {
+            if (!isMounted) return;
+            setLayerToRender(layersWithStyle);
+          });
         });
       });
 
@@ -174,14 +327,22 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
     };
   }, []);
 
-  if (isLoading) return <Spinner size={80} className="mx-auto mt-12 mb-8" />;
+  if (!layersToRender)
+    return <Spinner size={80} className="text-purple mx-auto mt-12 mb-8" />;
 
   return (
     <>
-      <div className="relative"></div>
-      <button className="w-full text-white hover:text-black text-sm font-bold bg-black hover:bg-transparent py-2.5 rounded-md border border-black transition mt-4">
-        Download Image
-      </button>
+      <div className="relative w-full h-full flex items-center justify-center">
+        {layersToRender.map((layer, index) => (
+          <img
+            key={index}
+            src={`https://ipfs.io/ipfs/${layer.uri}`}
+            className="absolute"
+            style={layer.style}
+            alt={layer.id}
+          />
+        ))}
+      </div>
     </>
   );
 }
