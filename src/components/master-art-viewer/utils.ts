@@ -15,13 +15,11 @@ export async function getActiveStateIndex(
   contract: GetContractResult<typeof v1Abi | typeof v2Abi>
 ): Promise<number> {
   if ('token-id' in layer.states) {
-    const relativeTokenId = layer.states['token-id'];
-    const layerTokenId = relativeTokenId + masterTokenId;
-    const leverId = layer.states['lever-id'];
+    const layerTokenId = layer.states['token-id'] + masterTokenId;
     const controlTokens = await contract.read.getControlToken([
       BigInt(layerTokenId),
     ]);
-    return Number(controlTokens[2 + leverId * 3]);
+    return Number(controlTokens[2 + layer.states['lever-id'] * 3]);
   }
 
   if ('currency_price' in layer.states) {
