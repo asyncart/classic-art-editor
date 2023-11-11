@@ -1,8 +1,9 @@
 import v1Abi from '@/abis/v1Abi';
 import v2Abi from '@/abis/v2Abi';
+import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS, __PROD__ } from '@/config';
 import { ArtNFTMetadata } from '@/types/shared';
 import seedrandom from 'seedrandom';
-import { GetContractResult } from 'wagmi/actions';
+import { GetContractResult, getContract } from 'wagmi/actions';
 
 type Layer = Extract<
   ArtNFTMetadata['layout']['layers'][number],
@@ -11,15 +12,15 @@ type Layer = Extract<
 
 export async function getActiveStateIndex(
   layer: Layer,
-  masterTokenId: number,
-  contract: GetContractResult<typeof v1Abi | typeof v2Abi>
+  getLayerControlTokenValue: ReturnType<
+    typeof createGetLayerControlTokenValueFn
+  >
 ): Promise<number> {
   if ('token-id' in layer.states) {
-    const layerTokenId = layer.states['token-id'] + masterTokenId;
-    const controlTokens = await contract.read.getControlToken([
-      BigInt(layerTokenId),
-    ]);
-    return Number(controlTokens[2 + layer.states['lever-id'] * 3]);
+    return getLayerControlTokenValue(
+      layer.states['token-id'],
+      layer.states['lever-id']
+    );
   }
 
   if ('currency_price' in layer.states) {
@@ -47,11 +48,7 @@ export async function getActiveStateIndex(
     let measureValue = 0;
 
     for (const { tokenId, leverId } of layer.states.combo_layer.tokens) {
-      const layerTokenId = tokenId + masterTokenId;
-      const controlTokens = await contract.read.getControlToken([
-        BigInt(layerTokenId),
-      ]);
-      measureValue += Number(controlTokens[2 + leverId * 3]);
+      measureValue += await getLayerControlTokenValue(tokenId, leverId);
     }
 
     return (
@@ -82,4 +79,45 @@ export async function getActiveStateIndex(
   }
 
   return 0;
+}
+
+export function createGetLayerControlTokenValueFn(
+  masterTokenId: number,
+  unmintedTokenValuesMap: NonNullable<
+    ArtNFTMetadata['async-attributes']
+  >['unminted-token-values']
+) {
+  return async (relativeLayerTokenId: number, leverId: number) => {
+    const layerTokenId = masterTokenId + relativeLayerTokenId;
+    const v2contract = getContract({
+      address: V2_CONTRACT_ADDRESS,
+      abi: v2Abi,
+    });
+
+    const v2LayerControlTokens = await v2contract.read
+      .getControlToken([BigInt(layerTokenId)])
+      .catch(() => null);
+
+    if (v2LayerControlTokens)
+      return Number(v2LayerControlTokens[2 + leverId * 3]);
+
+    // There are only 348 tokens [0 - 347] on the v1 contract and it only exists in production
+    // Also V2 master pieces can have layers on v1 contract (e.g. master tokenId 23)
+    if (V1_CONTRACT_ADDRESS && layerTokenId <= 347) {
+      const v1contract = getContract({
+        address: V1_CONTRACT_ADDRESS,
+        abi: v1Abi,
+      });
+
+      const v1LayerControlTokens = await v1contract.read
+        .getControlToken([BigInt(layerTokenId)])
+        .catch(() => null);
+
+      if (v1LayerControlTokens)
+        return Number(v1LayerControlTokens[2 + leverId * 3]);
+    }
+
+    // If the layer wasn't minted, take the default/static value.
+    return unmintedTokenValuesMap![relativeLayerTokenId][2 + leverId * 3];
+  };
 }

@@ -2,7 +2,10 @@ import v1Abi from '@/abis/v1Abi';
 import v2Abi from '@/abis/v2Abi';
 import { Modal, ModalSkeleton } from '@/components/common/modal';
 import Spinner from '@/components/common/spinner';
-import { getActiveStateIndex } from '@/components/master-art-viewer/utils';
+import {
+  createGetLayerControlTokenValueFn,
+  getActiveStateIndex,
+} from '@/components/master-art-viewer/utils';
 import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS } from '@/config';
 import useContract from '@/hooks/useContract';
 import {
@@ -142,16 +145,17 @@ type MasterArtScreenProps = {
 // Good pieces for testing
 // https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-786
 // https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-343
+// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-23
 function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
   const [layersToRender, setLayerToRender] =
     useState<{ id: string; uri: string; style: CSSProperties }[]>();
 
-  const getLayersToRender = async (metadata: ArtNFTMetadata) => {
-    const contract = getContract({
-      address: artInfo.tokenAddress,
-      abi: artInfo.tokenAddress === V1_CONTRACT_ADDRESS ? v1Abi : v2Abi,
-    });
-
+  const getLayersToRender = async (
+    metadata: ArtNFTMetadata,
+    getLayerControlTokenValue: ReturnType<
+      typeof createGetLayerControlTokenValueFn
+    >
+  ) => {
     const layers: {
       id: string;
       activeStateURI: string;
@@ -171,8 +175,7 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
 
       const activeStateIndex = await getActiveStateIndex(
         layer,
-        artInfo.tokenId,
-        contract
+        getLayerControlTokenValue
       );
       const state = layer.states.options[activeStateIndex];
       const { uri, label, ...transformationProperties } = state;
@@ -186,26 +189,20 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
     return layers;
   };
 
-  const readTransformationProperty = async (
-    property: LayerRelativeTokenIdAndLever | number
-  ) => {
-    if (typeof property === 'number') return property;
-    const contract = getContract({
-      address: artInfo.tokenAddress,
-      abi: artInfo.tokenAddress === V1_CONTRACT_ADDRESS ? v1Abi : v2Abi,
-    });
-
-    const layerTokenId = property['token-id'] + artInfo.tokenId;
-    const controlTokens = await contract.read.getControlToken([
-      BigInt(layerTokenId),
-    ]);
-    return Number(controlTokens[2 + property['lever-id'] * 3]);
-  };
-
   const getLayersWithStyle = async (
-    layers: Awaited<ReturnType<typeof getLayersToRender>>
+    layers: Awaited<ReturnType<typeof getLayersToRender>>,
+    getLayerControlTokenValue: ReturnType<
+      typeof createGetLayerControlTokenValueFn
+    >
   ) => {
     const layersWithStyle: typeof layersToRender = [];
+    const readTransformationProperty = (
+      property: LayerRelativeTokenIdAndLever | number
+    ) =>
+      typeof property === 'number'
+        ? property
+        : getLayerControlTokenValue(property['token-id'], property['lever-id']);
+
     for (const layer of layers) {
       const filters = [];
       const transforms = [];
@@ -309,17 +306,29 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
 
   useEffect(() => {
     let isMounted = true;
+
     fetch(`https://ipfs.io/ipfs/${artInfo.tokenURI}`)
       .then(response => response.json())
-      .then((metadata: ArtNFTMetadata) => {
+      .then(async (metadata: ArtNFTMetadata) => {
         if (!isMounted) return;
-        getLayersToRender(metadata).then(layers => {
-          if (!isMounted) return;
-          getLayersWithStyle(layers).then(layersWithStyle => {
-            if (!isMounted) return;
-            setLayerToRender(layersWithStyle);
-          });
-        });
+        const getLayerControlTokenValue = createGetLayerControlTokenValueFn(
+          artInfo.tokenId,
+          metadata['async-attributes']?.['unminted-token-values']
+        );
+
+        const layers = await getLayersToRender(
+          metadata,
+          getLayerControlTokenValue
+        );
+        if (!isMounted) return;
+
+        const layersWithStyle = await getLayersWithStyle(
+          layers,
+          getLayerControlTokenValue
+        );
+        if (!isMounted) return;
+
+        setLayerToRender(layersWithStyle);
       });
 
     return () => {

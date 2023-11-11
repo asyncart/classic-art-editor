@@ -152,7 +152,7 @@ export type ArtNFTMetadata = {
         }
     )[];
   };
-  'async-attributes': {
+  'async-attributes'?: {
     artists: string[];
     forced_render_hours?: number[];
     timezone?: {
@@ -160,5 +160,8 @@ export type ArtNFTMetadata = {
       default_utc_offset: number;
     };
     autonomous_description?: string;
+    'unminted-token-values'?: {
+      [relativeLayerTokenId: string]: [number, number, number]
+    }
   };
 };
