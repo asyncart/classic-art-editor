@@ -187,12 +187,22 @@ export async function fetchIpfs(uri: string) {
   ];
 
   for (const gatewayURL of gatewayURLs) {
+    // ipfs.io times out after 2 minutes but generally if it's unable to find a file within a minute
+    // it won't resolve in the next minute so we don't want the user to wait and we skip to the next provider
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 60000);
+
     try {
       // Sometimes request to ipfs.io can fail with net::ERR_HTTP2_PROTOCOL_ERROR 200 (OK)
       // Attaching .catch to fetch doesn't work, fetch has to be in try/catch block
-      const response = await fetch(`${gatewayURL}/ipfs/${uri}`);
+      const response = await fetch(`${gatewayURL}/ipfs/${uri}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(id);
       if (response.ok) return response;
-    } catch (error) {}
+    } catch (error) {
+      clearTimeout(id);
+    }
   }
 
   throw new Error(`Unable to load IPFS resource at URI: ${uri}`);
