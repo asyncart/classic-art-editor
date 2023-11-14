@@ -40,24 +40,20 @@ export async function getLayersFromMetadata(
     // Skip empty layer (usually the first layer in a piece, required by Jimp on renderer server)
     if (!('uri' in layer) && !('states' in layer)) continue;
 
-    // Check if it's static layer / only one state
-    if ('uri' in layer) {
-      const { id, label, uri, anchor, ...transformationProperties } = layer;
-      layers.push({
-        id,
-        activeStateURI: uri,
-        anchor,
-        transformationProperties,
-      });
-      continue;
+    let state = layer;
+
+    while ('states' in state) {
+      const activeStateIndex = await getActiveStateIndex(
+        state,
+        getLayerControlTokenValue
+      );
+
+      // @ts-ignore
+      state = state.states.options[activeStateIndex];
     }
 
-    const activeStateIndex = await getActiveStateIndex(
-      layer,
-      getLayerControlTokenValue
-    );
-    const state = layer.states.options[activeStateIndex];
-    const { uri, label, anchor, ...transformationProperties } = state;
+    // @ts-ignore
+    const { id, label, uri, anchor, ...transformationProperties } = state;
     layers.push({
       id: layer.id,
       anchor,

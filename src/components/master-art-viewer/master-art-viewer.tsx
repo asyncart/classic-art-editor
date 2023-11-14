@@ -202,8 +202,6 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
   };
 
   useEffect(() => {
-    // In development React in Strict Mode runs effects twice
-    isComponentMountedRef.current = true;
     renderArtwork();
 
     return () => {

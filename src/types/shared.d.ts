@@ -158,6 +158,11 @@ export type ArtNFTMetadata = {
   layout: {
     version?: 1 | 2 | 3 | 4 | 5;
     layers: (
+      | {
+          id: string;
+          width: number;
+          height: number;
+        }
       | ({
           id: string;
           uri: string;
@@ -176,8 +181,18 @@ export type ArtNFTMetadata = {
         }
       | {
           id: string;
-          width: number;
-          height: number;
+          states: {
+            options: {
+              id: string;
+              states: {
+                options: {
+                  uri: string;
+                  label: string;
+                  anchor?: string;
+                }[];
+              } & ActiveStateRule;
+            }[];
+          } & ActiveStateRule;
         }
     )[];
   };

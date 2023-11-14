@@ -11,7 +11,7 @@ export default async function getLayerImageElement(
   getAnchorLayer: (layerId: string) => HTMLImageElement,
   readTransformationProperty: (
     property: LayerRelativeTokenIdAndLever | number
-  ) => number | Promise<number>,
+  ) => number | Promise<number>
 ) {
   const filters = [];
   const transforms = [];
@@ -21,9 +21,9 @@ export default async function getLayerImageElement(
 
   const image = new Image();
   image.id = layer.id;
+  image.alt = layer.id;
   image.className = 'absolute';
   image.src = URL.createObjectURL(imageBlob);
-  image.alt = layer.id;
 
   // Ensures that width and height properties are populated
   await new Promise(resolve => {
@@ -65,23 +65,19 @@ export default async function getLayerImageElement(
         const relativeRotation = await readTransformationProperty(
           layer.transformationProperties['orbit-rotation']
         );
+        const unrotatedRelativeX = relativeX;
         const rad = (-relativeRotation * Math.PI) / 180;
-        if (layoutVersion === 1) {
-          relativeX = Math.round(
-            relativeX * Math.cos(rad) - relativeY * Math.sin(rad)
-          );
-          relativeY = Math.round(
-            relativeY * Math.cos(rad) + relativeX * Math.sin(rad)
-          );
-        } else {
-          const unrotatedRelativeX = relativeX;
-          relativeX = Math.round(
-            relativeX * Math.cos(rad) - relativeY * Math.sin(rad)
-          );
-          relativeY = Math.round(
-            relativeY * Math.cos(rad) + unrotatedRelativeX * Math.sin(rad)
-          );
-        }
+
+        relativeX = Math.round(
+          relativeX * Math.cos(rad) - relativeY * Math.sin(rad)
+        );
+
+        relativeY =
+          layoutVersion === 1
+            ? Math.round(relativeY * Math.cos(rad) + relativeX * Math.sin(rad))
+            : Math.round(
+                relativeY * Math.cos(rad) + unrotatedRelativeX * Math.sin(rad)
+              );
       }
       baseX += relativeX;
       baseY += relativeY;
@@ -123,14 +119,6 @@ export default async function getLayerImageElement(
     }
   }
 
-  if (layer.transformationProperties.color?.alpha) {
-    image.style.opacity = String(
-      (await readTransformationProperty(
-        layer.transformationProperties.color?.alpha
-      )) / 100
-    );
-  }
-
   if (layer.transformationProperties.color?.hue) {
     const degrees = await readTransformationProperty(
       layer.transformationProperties.color?.hue
@@ -152,11 +140,13 @@ export default async function getLayerImageElement(
     if (saturation !== 0) filters.push(`saturate(${saturation}%)`);
   }
 
-  if (layer.transformationProperties.color?.opacity) {
+  const opacity =
+    layer.transformationProperties.color?.alpha ||
+    layer.transformationProperties.color?.opacity;
+
+  if (opacity) {
     image.style.opacity = String(
-      (await readTransformationProperty(
-        layer.transformationProperties.color?.opacity
-      )) / 100
+      (await readTransformationProperty(opacity)) / 100
     );
   }
 
