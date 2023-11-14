@@ -2,20 +2,16 @@ import v1Abi from '@/abis/v1Abi';
 import v2Abi from '@/abis/v2Abi';
 import { Modal, ModalSkeleton } from '@/components/common/modal';
 import Spinner from '@/components/common/spinner';
+import getLayerImageElement from '@/components/master-art-viewer/layer-image-element';
 import {
   createGetLayerControlTokenValueFn,
-  getActiveStateIndex,
+  getLayersFromMetadata,
+  getMasterArtMetadata,
 } from '@/components/master-art-viewer/utils';
 import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS } from '@/config';
-import useContract from '@/hooks/useContract';
-import {
-  ArtNFTMetadata,
-  LayerRelativeTokenIdAndLever,
-  LayerTransformationProperties,
-} from '@/types/shared';
+import { LayerRelativeTokenIdAndLever } from '@/types/shared';
 import { getErrorMessage } from '@/utils';
-import { CSSProperties, FormEvent, useEffect, useState } from 'react';
-import seedrandom from 'seedrandom';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Address } from 'viem';
 import { getContract } from 'wagmi/actions';
 
@@ -40,7 +36,7 @@ export default function MasterArtViewer({
     );
 
   return (
-    <ModalSkeleton onClose={onClose}>
+    <ModalSkeleton className="overflow-auto" onClose={onClose}>
       <button
         onClick={onClose}
         aria-label="Close"
@@ -142,216 +138,118 @@ type MasterArtScreenProps = {
   artInfo: MasterArtInfo;
 };
 
-// Good pieces for testing
-// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-786
-// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-343
-// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-23
+const ERROR_MSG = 'Unexpected issue occured.\nPlease try again.';
+
 function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
-  const [layersToRender, setLayerToRender] =
-    useState<{ id: string; uri: string; style: CSSProperties }[]>();
+  const isComponentMountedRef = useRef(true);
+  const imagesContainer = useRef<HTMLDivElement>(null);
+  const [statusMessage, setStatusMessage] = useState('Loading NFT metadata...');
 
-  const getLayersToRender = async (
-    metadata: ArtNFTMetadata,
-    getLayerControlTokenValue: ReturnType<
-      typeof createGetLayerControlTokenValueFn
-    >
-  ) => {
-    const layers: {
-      id: string;
-      activeStateURI: string;
-      transformationProperties: LayerTransformationProperties;
-    }[] = [];
+  const renderArtwork = async () => {
+    try {
+      const metadata = await getMasterArtMetadata(artInfo.tokenURI);
+      const getLayerControlTokenValue = createGetLayerControlTokenValueFn(
+        artInfo.tokenId,
+        metadata['async-attributes']?.['unminted-token-values']
+      );
 
-    for (const layer of metadata.layout.layers) {
-      // Skip empty layer (was usually the first layer in a piece, required by Jimp on renderer server)
-      if (!('uri' in layer) && !('states' in layer)) continue;
+      const readTransformationProperty = (
+        property: LayerRelativeTokenIdAndLever | number
+      ) =>
+        typeof property === 'number'
+          ? property
+          : getLayerControlTokenValue(
+              property['token-id'],
+              property['lever-id']
+            );
 
-      // Check if it's static layer / only one state
-      if ('uri' in layer) {
-        const { id, label, uri, ...transformationProperties } = layer;
-        layers.push({ id, activeStateURI: uri, transformationProperties });
-        continue;
-      }
-
-      const activeStateIndex = await getActiveStateIndex(
-        layer,
+      if (!isComponentMountedRef.current) return;
+      const layers = await getLayersFromMetadata(
+        metadata,
         getLayerControlTokenValue
       );
-      const state = layer.states.options[activeStateIndex];
-      const { uri, label, ...transformationProperties } = state;
-      layers.push({
-        id: layer.id,
-        activeStateURI: uri,
-        transformationProperties,
-      });
+
+      const layerImageElements: HTMLImageElement[] = [];
+
+      for (const layer of layers) {
+        if (!isComponentMountedRef.current) return;
+        setStatusMessage(
+          `Loading layers ${layerImageElements.length + 1}/${layers.length}...`
+        );
+
+        const isLayerVisible = await readTransformationProperty(
+          layer.transformationProperties.visible === undefined
+            ? 1
+            : layer.transformationProperties.visible
+        );
+        if (!isLayerVisible) continue;
+
+        const layerImageElement = await getLayerImageElement(
+          layer,
+          metadata.layout.version || 1,
+          anchorLayerId =>
+            layerImageElements.find(el => el.id === anchorLayerId)!,
+          readTransformationProperty
+        );
+        layerImageElements.push(layerImageElement);
+      }
+
+      imagesContainer.current!.replaceChildren(...layerImageElements);
+    } catch (error) {
+      console.error(error);
+      setStatusMessage(ERROR_MSG);
     }
-
-    return layers;
-  };
-
-  const getLayersWithStyle = async (
-    layers: Awaited<ReturnType<typeof getLayersToRender>>,
-    getLayerControlTokenValue: ReturnType<
-      typeof createGetLayerControlTokenValueFn
-    >
-  ) => {
-    const layersWithStyle: typeof layersToRender = [];
-    const readTransformationProperty = (
-      property: LayerRelativeTokenIdAndLever | number
-    ) =>
-      typeof property === 'number'
-        ? property
-        : getLayerControlTokenValue(property['token-id'], property['lever-id']);
-
-    for (const layer of layers) {
-      const filters = [];
-      const transforms = [];
-      const style: CSSProperties = {};
-
-      const isLayerVisible = await readTransformationProperty(
-        layer.transformationProperties.visible || 1
-      );
-      if (!isLayerVisible) continue;
-
-      const { x = 100, y = 100 } = layer.transformationProperties.scale || {};
-      let scaleX = await readTransformationProperty(x);
-      let scaleY = await readTransformationProperty(y);
-
-      if (layer.transformationProperties.mirror) {
-        const { x, y } = layer.transformationProperties.mirror;
-        const mirrorX = await readTransformationProperty(x);
-        const mirrorY = await readTransformationProperty(y);
-        if (mirrorX) scaleX = -scaleX;
-        if (mirrorY) scaleY = -scaleY;
-      }
-
-      transforms.push(`scale(${scaleX / 100}, ${scaleY / 100})`);
-
-      if (layer.transformationProperties['fixed-rotation']) {
-        const fixedRotation = layer.transformationProperties['fixed-rotation'];
-        if ('random' in fixedRotation) {
-          const date = new Date();
-          const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
-          const maxValueExclusive =
-            fixedRotation.random.max_value_inclusive + 1;
-          const degrees =
-            Math.floor(seedrandom(key)() * maxValueExclusive) *
-            fixedRotation.multiplier;
-          transforms.push(`rotate(${degrees}deg)`);
-        } else {
-          const degrees = await readTransformationProperty(fixedRotation);
-          transforms.push(
-            `rotate(${degrees * (fixedRotation.multiplier || 1)}deg)`
-          );
-        }
-      }
-
-      if (layer.transformationProperties.color?.alpha) {
-        style.opacity =
-          (await readTransformationProperty(
-            layer.transformationProperties.color?.alpha
-          )) / 100;
-      }
-
-      if (layer.transformationProperties.color?.hue) {
-        const degrees = await readTransformationProperty(
-          layer.transformationProperties.color?.hue
-        );
-        filters.push(`hue-rotate(${degrees}deg)`);
-      }
-
-      if (layer.transformationProperties.color?.brightness) {
-        const brightness = await readTransformationProperty(
-          layer.transformationProperties.color?.brightness
-        );
-        if (brightness !== 0) filters.push(`brightness(${brightness})`);
-      }
-
-      if (layer.transformationProperties.color?.saturation) {
-        const saturation = await readTransformationProperty(
-          layer.transformationProperties.color?.saturation
-        );
-        if (saturation !== 0) filters.push(`saturate(${saturation})`);
-      }
-
-      if (layer.transformationProperties.color?.opacity) {
-        style.opacity =
-          (await readTransformationProperty(
-            layer.transformationProperties.color?.opacity
-          )) / 100;
-      }
-
-      if (layer.transformationProperties.color?.multiply)
-        style.mixBlendMode = 'multiply';
-      if (layer.transformationProperties.color?.hardlight)
-        style.mixBlendMode = 'hard-light';
-      if (layer.transformationProperties.color?.lighten)
-        style.mixBlendMode = 'lighten';
-      if (layer.transformationProperties.color?.overlay)
-        style.mixBlendMode = 'overlay';
-      if (layer.transformationProperties.color?.difference)
-        style.mixBlendMode = 'difference';
-      if (layer.transformationProperties.color?.exclusion)
-        style.mixBlendMode = 'exclusion';
-      if (layer.transformationProperties.color?.screen)
-        style.mixBlendMode = 'screen';
-
-      style.filter = filters.join(' ');
-      style.transform = transforms.join(' ');
-
-      layersWithStyle.push({ id: layer.id, uri: layer.activeStateURI, style });
-    }
-    return layersWithStyle;
   };
 
   useEffect(() => {
-    let isMounted = true;
-
-    fetch(`https://ipfs.io/ipfs/${artInfo.tokenURI}`)
-      .then(response => response.json())
-      .then(async (metadata: ArtNFTMetadata) => {
-        if (!isMounted) return;
-        const getLayerControlTokenValue = createGetLayerControlTokenValueFn(
-          artInfo.tokenId,
-          metadata['async-attributes']?.['unminted-token-values']
-        );
-
-        const layers = await getLayersToRender(
-          metadata,
-          getLayerControlTokenValue
-        );
-        if (!isMounted) return;
-
-        const layersWithStyle = await getLayersWithStyle(
-          layers,
-          getLayerControlTokenValue
-        );
-        if (!isMounted) return;
-
-        setLayerToRender(layersWithStyle);
-      });
+    // In development React in Strict Mode runs effects twice
+    isComponentMountedRef.current = true;
+    renderArtwork();
 
     return () => {
-      isMounted = false;
+      isComponentMountedRef.current = false;
     };
   }, []);
 
-  if (!layersToRender)
-    return <Spinner size={80} className="text-purple mx-auto mt-12 mb-8" />;
-
   return (
-    <>
-      <div className="relative w-full h-full flex items-center justify-center">
-        {layersToRender.map((layer, index) => (
-          <img
-            key={index}
-            src={`https://ipfs.io/ipfs/${layer.uri}`}
-            className="absolute"
-            style={layer.style}
-            alt={layer.id}
-          />
-        ))}
+    <div ref={imagesContainer} className="relative">
+      <div className="w-full fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        {statusMessage === ERROR_MSG ? (
+          <>
+            {/* x-circle from Feather Icons */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="80"
+              height="80"
+              viewBox="0 0 24 24"
+              fill="transparent"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-red mx-auto mb-8"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <p className="text-white text-center">
+              {ERROR_MSG.split('\n')[0]}
+              <br />
+              {ERROR_MSG.split('\n')[1]}
+            </p>
+          </>
+        ) : (
+          <>
+            <Spinner size={80} className="text-purple mx-auto mt-12 mb-8" />
+            <p className="text-white text-center">
+              {statusMessage}
+              <br />
+              The process can take several minutes.
+            </p>
+          </>
+        )}
       </div>
-    </>
+    </div>
   );
 }

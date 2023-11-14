@@ -120,6 +120,32 @@ type ActiveStateRule =
       };
     };
 
+// Old metadata format with pointer to actual metadata (ArtNFTMetadata)
+// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-56
+// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-2567
+export type OldArtNFTMetadata = {
+  name: string;
+  description: string;
+  attributes?: {
+    trait_type: string;
+    value: string | number;
+  }[];
+  image: string;
+  'async-attributes'?: {
+    artists: string[];
+  };
+  controls?: {
+    minValue: string;
+    maxValue: string;
+    label: string;
+    controlType: string;
+    stateLabels: string[];
+    startValue: number;
+  }[];
+  // Pointer to ArtNFTMetadata
+  master: string;
+};
+
 export type ArtNFTMetadata = {
   name: string;
   description: string;
@@ -130,11 +156,13 @@ export type ArtNFTMetadata = {
   }[];
   image: string;
   layout: {
+    version?: 1 | 2 | 3 | 4 | 5;
     layers: (
       | ({
           id: string;
           uri: string;
           label: string;
+          anchor?: string;
         } & LayerTransformationProperties)
       | {
           id: string;
@@ -142,6 +170,7 @@ export type ArtNFTMetadata = {
             options: ({
               uri: string;
               label: string;
+              anchor?: string;
             } & LayerTransformationProperties)[];
           } & ActiveStateRule;
         }
@@ -161,7 +190,7 @@ export type ArtNFTMetadata = {
     };
     autonomous_description?: string;
     'unminted-token-values'?: {
-      [relativeLayerTokenId: string]: [number, number, number]
-    }
+      [relativeLayerTokenId: string]: [number, number, number];
+    };
   };
 };

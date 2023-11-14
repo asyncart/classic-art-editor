@@ -1,17 +1,76 @@
 import v1Abi from '@/abis/v1Abi';
 import v2Abi from '@/abis/v2Abi';
 import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS, __PROD__ } from '@/config';
-import { ArtNFTMetadata } from '@/types/shared';
+import {
+  ArtNFTMetadata,
+  LayerTransformationProperties,
+  OldArtNFTMetadata,
+} from '@/types/shared';
 import seedrandom from 'seedrandom';
-import { GetContractResult, getContract } from 'wagmi/actions';
+import { getContract } from 'wagmi/actions';
 
-type Layer = Extract<
-  ArtNFTMetadata['layout']['layers'][number],
-  { states: any }
->;
+export async function getMasterArtMetadata(tokenURI: string) {
+  const response = await fetchIpfs(tokenURI);
+  const metadata = (await response.json()) as
+    | ArtNFTMetadata
+    | OldArtNFTMetadata;
 
-export async function getActiveStateIndex(
-  layer: Layer,
+  if ('master' in metadata) {
+    const response2 = await fetchIpfs(metadata.master);
+    return response2.json() as Promise<ArtNFTMetadata>;
+  }
+
+  return metadata;
+}
+
+export async function getLayersFromMetadata(
+  metadata: ArtNFTMetadata,
+  getLayerControlTokenValue: ReturnType<
+    typeof createGetLayerControlTokenValueFn
+  >
+) {
+  const layers: {
+    id: string;
+    anchor?: string;
+    activeStateURI: string;
+    transformationProperties: LayerTransformationProperties;
+  }[] = [];
+
+  for (const layer of metadata.layout.layers) {
+    // Skip empty layer (usually the first layer in a piece, required by Jimp on renderer server)
+    if (!('uri' in layer) && !('states' in layer)) continue;
+
+    // Check if it's static layer / only one state
+    if ('uri' in layer) {
+      const { id, label, uri, anchor, ...transformationProperties } = layer;
+      layers.push({
+        id,
+        activeStateURI: uri,
+        anchor,
+        transformationProperties,
+      });
+      continue;
+    }
+
+    const activeStateIndex = await getActiveStateIndex(
+      layer,
+      getLayerControlTokenValue
+    );
+    const state = layer.states.options[activeStateIndex];
+    const { uri, label, anchor, ...transformationProperties } = state;
+    layers.push({
+      id: layer.id,
+      anchor,
+      activeStateURI: uri,
+      transformationProperties,
+    });
+  }
+
+  return layers;
+}
+
+async function getActiveStateIndex(
+  layer: Extract<ArtNFTMetadata['layout']['layers'][number], { states: any }>,
   getLayerControlTokenValue: ReturnType<
     typeof createGetLayerControlTokenValueFn
   >
@@ -118,6 +177,27 @@ export function createGetLayerControlTokenValueFn(
     }
 
     // If the layer wasn't minted, take the default/static value.
-    return unmintedTokenValuesMap![relativeLayerTokenId][2 + leverId * 3];
+    return unmintedTokenValuesMap?.[relativeLayerTokenId][2 + leverId * 3] || 0;
   };
+}
+
+export async function fetchIpfs(uri: string) {
+  const gatewayURLs = [
+    'https://ipfs.io',
+    'https://cloudflare-ipfs.com',
+    'https://gateway.pinata.cloud',
+    'https://dweb.link',
+    'https://hardbin.com',
+  ];
+
+  for (const gatewayURL of gatewayURLs) {
+    try {
+      // Sometimes request to ipfs.io can fail with net::ERR_HTTP2_PROTOCOL_ERROR 200 (OK)
+      // Attaching .catch to fetch doesn't work, fetch has to be in try/catch block
+      const response = await fetch(`${gatewayURL}/ipfs/${uri}`);
+      if (response.ok) return response;
+    } catch (error) {}
+  }
+
+  throw new Error(`Unable to load IPFS resource at URI: ${uri}`);
 }

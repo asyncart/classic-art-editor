@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import cx from 'classnames';
 
 interface ModalSkeletonProps extends HTMLAttributes<HTMLDivElement> {
+  className?: string;
   onClose: () => void;
 }
 
@@ -30,7 +31,7 @@ export const ModalSkeleton = (props: ModalSkeletonProps) => {
       {...props}
       ref={dialogRef}
       tabIndex={0}
-      className="dialog fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden px-4"
+      className={cx('fixed inset-0 z-50 px-4', props.className)}
     >
       <div
         className="fixed inset-0 -z-10 bg-black/75 backdrop-blur-sm"
@@ -65,7 +66,10 @@ export const Modal = ({
   );
 
   return (
-    <ModalSkeleton onClose={onClose}>
+    <ModalSkeleton
+      className="flex items-center justify-center overflow-x-hidden"
+      onClose={onClose}
+    >
       <article className={classNames}>
         {/* z-10 is required so header is above possible Confetti */}
         <header className="relative z-10 mb-5">
