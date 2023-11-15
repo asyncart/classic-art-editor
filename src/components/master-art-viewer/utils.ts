@@ -2,29 +2,14 @@ import v1Abi from '@/abis/v1Abi';
 import v2Abi from '@/abis/v2Abi';
 import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS, __PROD__ } from '@/config';
 import {
-  ArtNFTMetadata,
+  MasterArtNFTMetadata,
   LayerTransformationProperties,
-  OldArtNFTMetadata,
 } from '@/types/shared';
 import seedrandom from 'seedrandom';
 import { getContract } from 'wagmi/actions';
 
-export async function getMasterArtMetadata(tokenURI: string) {
-  const response = await fetchIpfs(tokenURI);
-  const metadata = (await response.json()) as
-    | ArtNFTMetadata
-    | OldArtNFTMetadata;
-
-  if ('master' in metadata) {
-    const response2 = await fetchIpfs(metadata.master);
-    return response2.json() as Promise<ArtNFTMetadata>;
-  }
-
-  return metadata;
-}
-
 export async function getLayersFromMetadata(
-  metadata: ArtNFTMetadata,
+  metadata: MasterArtNFTMetadata,
   getLayerControlTokenValue: ReturnType<
     typeof createGetLayerControlTokenValueFn
   >
@@ -66,7 +51,10 @@ export async function getLayersFromMetadata(
 }
 
 async function getActiveStateIndex(
-  layer: Extract<ArtNFTMetadata['layout']['layers'][number], { states: any }>,
+  layer: Extract<
+    MasterArtNFTMetadata['layout']['layers'][number],
+    { states: any }
+  >,
   getLayerControlTokenValue: ReturnType<
     typeof createGetLayerControlTokenValueFn
   >
@@ -139,7 +127,7 @@ async function getActiveStateIndex(
 export function createGetLayerControlTokenValueFn(
   masterTokenId: number,
   unmintedTokenValuesMap: NonNullable<
-    ArtNFTMetadata['async-attributes']
+    MasterArtNFTMetadata['async-attributes']
   >['unminted-token-values']
 ) {
   return async (relativeLayerTokenId: number, leverId: number) => {

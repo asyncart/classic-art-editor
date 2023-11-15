@@ -120,10 +120,7 @@ type ActiveStateRule =
       };
     };
 
-// Old metadata format with pointer to actual metadata (ArtNFTMetadata)
-// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-56
-// https://async.market/art/master/0xb6dae651468e9593e4581705a09c10a76ac1e0c8-2567
-export type OldArtNFTMetadata = {
+export type LayerArtNFTMetadata = {
   name: string;
   description: string;
   attributes?: {
@@ -142,11 +139,10 @@ export type OldArtNFTMetadata = {
     stateLabels: string[];
     startValue: number;
   }[];
-  // Pointer to ArtNFTMetadata
   master: string;
 };
 
-export type ArtNFTMetadata = {
+export type MasterArtNFTMetadata = {
   name: string;
   description: string;
   artistName: string;

@@ -5,11 +5,14 @@ import Spinner from '@/components/common/spinner';
 import getLayerImageElement from '@/components/master-art-viewer/layer-image-element';
 import {
   createGetLayerControlTokenValueFn,
+  fetchIpfs,
   getLayersFromMetadata,
-  getMasterArtMetadata,
 } from '@/components/master-art-viewer/utils';
 import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS } from '@/config';
-import { LayerRelativeTokenIdAndLever } from '@/types/shared';
+import {
+  MasterArtNFTMetadata,
+  LayerRelativeTokenIdAndLever,
+} from '@/types/shared';
 import { getErrorMessage } from '@/utils';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Address } from 'viem';
@@ -76,6 +79,13 @@ function FormScreen({ onSubmit }: FormScreenProps) {
       const tokenURI = await contract.read.tokenURI([BigInt(tokenId)]);
       // V1 contract won't fail for non existent token, it will just return an empty string.
       if (!tokenURI) throw new Error('URI query for nonexistent token');
+
+      // controlTokens exist for layers , this means it's layer token
+      const controlTokens = await contract.read
+        .getControlToken([BigInt(tokenId)])
+        .catch(() => null);
+
+      if (controlTokens) throw new Error('URI query for nonexistent token');
       onSubmit({ tokenAddress, tokenId, tokenURI });
     } catch (error) {
       const message = getErrorMessage(error);
@@ -126,7 +136,7 @@ function FormScreen({ onSubmit }: FormScreenProps) {
       {(state === 'token404' || state === 'error') && (
         <p className="text-red text-sm text-center mt-3">
           {state === 'token404'
-            ? 'Token does not exist.'
+            ? 'Invalid master token id provided.'
             : 'Unexpected error occured. Please try again.'}
         </p>
       )}
@@ -147,7 +157,8 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
 
   const renderArtwork = async () => {
     try {
-      const metadata = await getMasterArtMetadata(artInfo.tokenURI);
+      const response = await fetchIpfs(artInfo.tokenURI);
+      const metadata = (await response.json()) as MasterArtNFTMetadata;
       const getLayerControlTokenValue = createGetLayerControlTokenValueFn(
         artInfo.tokenId,
         metadata['async-attributes']?.['unminted-token-values']

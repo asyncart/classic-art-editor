@@ -2,12 +2,15 @@ import {
   fetchIpfs,
   getLayersFromMetadata,
 } from '@/components/master-art-viewer/utils';
-import { ArtNFTMetadata, LayerRelativeTokenIdAndLever } from '@/types/shared';
+import {
+  MasterArtNFTMetadata,
+  LayerRelativeTokenIdAndLever,
+} from '@/types/shared';
 import seedrandom from 'seedrandom';
 
 export default async function getLayerImageElement(
   layer: Awaited<ReturnType<typeof getLayersFromMetadata>>[number],
-  layoutVersion: ArtNFTMetadata['layout']['version'],
+  layoutVersion: MasterArtNFTMetadata['layout']['version'],
   getAnchorLayer: (layerId: string) => HTMLImageElement,
   readTransformationProperty: (
     property: LayerRelativeTokenIdAndLever | number
