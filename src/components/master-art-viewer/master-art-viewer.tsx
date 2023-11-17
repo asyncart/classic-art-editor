@@ -13,8 +13,16 @@ import {
   MasterArtNFTMetadata,
   LayerRelativeTokenIdAndLever,
 } from '@/types/shared';
-import { getErrorMessage } from '@/utils';
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { getErrorMessage, sleep } from '@/utils';
+import {
+  Dispatch,
+  FormEvent,
+  SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { ChevronsLeft, Info } from 'react-feather';
 import { Address } from 'viem';
 import { getContract } from 'wagmi/actions';
 
@@ -24,12 +32,19 @@ type MasterArtInfo = {
   tokenURI: string;
 };
 
+type InfoPanelData = {
+  title: string;
+  layers: { title: string; uri: string }[];
+};
+
 export default function MasterArtViewer({
   onClose,
 }: {
   onClose: VoidFunction;
 }) {
   const [artInfo, setArtInfo] = useState<MasterArtInfo>();
+  const [infoPanelData, setInfoPanelData] = useState<InfoPanelData>();
+  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
 
   if (!artInfo)
     return (
@@ -40,14 +55,32 @@ export default function MasterArtViewer({
 
   return (
     <ModalSkeleton className="overflow-auto" onClose={onClose}>
-      <button
-        onClick={onClose}
-        aria-label="Close"
-        className="fixed top-0 right-0 z-10 text-3xl text-white leading-none m-8"
-      >
-        &#10005;
-      </button>
-      <MasterArtScreen artInfo={artInfo} />
+      <div className="fixed top-0 right-0 z-20 w-full flex justify-between p-6 md:p-8">
+        {infoPanelData && (
+          <button
+            aria-label="Artwork details"
+            onClick={() => setIsInfoPanelOpen(true)}
+          >
+            <Info size={28} className="text-white mr-4" />
+          </button>
+        )}
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="text-3xl text-white leading-none ml-auto"
+        >
+          &#10005;
+        </button>
+      </div>
+      <MasterArtScreen artInfo={artInfo} setInfoPanelData={setInfoPanelData} />
+      {isInfoPanelOpen && infoPanelData && (
+        <InfoPanel
+          title={infoPanelData.title}
+          layers={infoPanelData.layers}
+          tokenURI={artInfo.tokenURI}
+          onClose={() => setIsInfoPanelOpen(false)}
+        />
+      )}
     </ModalSkeleton>
   );
 }
@@ -146,11 +179,12 @@ function FormScreen({ onSubmit }: FormScreenProps) {
 
 type MasterArtScreenProps = {
   artInfo: MasterArtInfo;
+  setInfoPanelData: Dispatch<SetStateAction<InfoPanelData | undefined>>;
 };
 
 const ERROR_MSG = 'Unexpected issue occured.\nPlease try again.';
 
-function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
+function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
   const isComponentMountedRef = useRef(true);
   const imagesContainer = useRef<HTMLDivElement>(null);
   const [statusMessage, setStatusMessage] = useState('Loading NFT metadata...');
@@ -180,6 +214,7 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
         getLayerControlTokenValue
       );
 
+      const layersForInfoPanel: InfoPanelData['layers'] = [];
       const layerImageElements: HTMLImageElement[] = [];
 
       for (const layer of layers) {
@@ -203,9 +238,14 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
           readTransformationProperty
         );
         layerImageElements.push(layerImageElement);
+        layersForInfoPanel.push({ title: layer.id, uri: layer.activeStateURI });
       }
 
       imagesContainer.current!.replaceChildren(...layerImageElements);
+      setInfoPanelData({
+        title: metadata.name,
+        layers: layersForInfoPanel,
+      });
     } catch (error) {
       console.error(error);
       setStatusMessage(ERROR_MSG);
@@ -221,7 +261,7 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
   }, []);
 
   return (
-    <div ref={imagesContainer} className="relative">
+    <div ref={imagesContainer} className="relative mx-auto">
       <div className="w-full fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         {statusMessage === ERROR_MSG ? (
           <>
@@ -260,5 +300,69 @@ function MasterArtScreen({ artInfo }: MasterArtScreenProps) {
         )}
       </div>
     </div>
+  );
+}
+
+type InfoPanelProps = {
+  title: string;
+  layers: { title: string; uri: string }[];
+  tokenURI: string;
+  onClose: VoidFunction;
+};
+
+function InfoPanel({ title, layers, tokenURI, onClose }: InfoPanelProps) {
+  const panelRef = useRef<HTMLElement>(null);
+
+  const handleClosePanel = async () => {
+    panelRef.current?.classList.add('-translate-x-full');
+    await sleep(300);
+    onClose();
+  };
+
+  useEffect(() => {
+    sleep(0).then(() => {
+      panelRef.current?.classList.remove('-translate-x-full');
+    });
+  }, []);
+
+  return (
+    <article
+      ref={panelRef}
+      className="fixed top-0 left-0 z-50 bg-white w-full min-h-screen sm:max-w-sm transition -translate-x-full"
+    >
+      <header className="flex justify-between items-center p-4">
+        <h2 className="text-2xl font-bold">Details</h2>
+        <button
+          aria-label="Close sidebar"
+          onClick={handleClosePanel}
+          className="hover:bg-gray-100 rounded p-0.5 transition"
+        >
+          <ChevronsLeft size={28} className="opacity-50" />
+        </button>
+      </header>
+      <hr />
+      <section className="px-4 mt-6">
+        <h3 className="text-lg font-bold">Title</h3>
+        <p>{title}</p>
+        <h3 className="text-lg font-bold mt-4">Metadata</h3>
+        <a
+          href={`https://ipfs.io/ipfs/${tokenURI}`}
+          target="_blank"
+          className="underline"
+        >
+          View on IPFS
+        </a>
+        <h3 className="text-lg font-bold mt-4">Layers</h3>
+        {layers.map(layer => (
+          <a
+            href={`https://ipfs.io/ipfs/${layer.uri}`}
+            target="_blank"
+            className="block underline"
+          >
+            {layer.title}
+          </a>
+        ))}
+      </section>
+    </article>
   );
 }
