@@ -22,7 +22,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ChevronsLeft, Info } from 'react-feather';
+import { ChevronsLeft, Info, X } from 'react-feather';
 import { Address } from 'viem';
 import { getContract } from 'wagmi/actions';
 
@@ -67,9 +67,9 @@ export default function MasterArtViewer({
         <button
           onClick={onClose}
           aria-label="Close"
-          className="text-3xl text-white leading-none ml-auto"
+          className="ml-auto -mr-1"
         >
-          &#10005;
+          <X size={36} className='text-white' />
         </button>
       </div>
       <MasterArtScreen artInfo={artInfo} setInfoPanelData={setInfoPanelData} />

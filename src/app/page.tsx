@@ -20,7 +20,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col items-center">
-      <header className="container pt-8 mb-12">
+      <header className="container pt-8 mb-12 px-4">
         <nav className="flex items-center justify-between">
           <img
             src={logo.src}
@@ -34,12 +34,12 @@ export default function Home() {
           <ConnectButton />
         </nav>
       </header>
-      <main className="container">
+      <main className="container px-4">
         <p>
           Some explainer text on what happened, why we need this editor and how
           to use it / tools it offers.
         </p>
-        <div className="grid grid-cols-3 gap-x-8 mt-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mt-12">
           <ToolBox
             icon={viewMasterArtIcon}
             title="View Master Artwork"
@@ -51,12 +51,6 @@ export default function Home() {
             title="Update Layer Artwork"
             description="Lorem ipsum dolor sit, amet consectetur adipisicing elit. Fugiat eius vel consectetur! Non beatae autem sapiente illum blanditiis eligendi dignissimos?"
             onClick={() => setModal(MODAL.UPDATE_LAYER_ARTWORK)}
-          />
-          <ToolBox
-            icon={reportIssueIcon}
-            title="Report an issue"
-            description="Lorem ipsum dolor sit, amet consectetur adipisicing elit. Fugiat eius vel consectetur! Non beatae autem sapiente illum blanditiis eligendi dignissimos?"
-            onClick={() => null}
           />
         </div>
       </main>

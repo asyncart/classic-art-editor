@@ -9,7 +9,7 @@ export default function ToolBox({ title, description, icon, onClick }: Props) {
   return (
     <div
       onClick={onClick}
-      className="cursor-pointer rounded-lg p-5 shadow-soft-drop hover:scale-[103%] transition"
+      className="cursor-pointer rounded-lg p-5 shadow-soft-drop md:hover:scale-[103%] transition"
     >
       <div className="flex items-center justify-between">
         <img src={icon.src} width={icon.width} height={icon.height} />
