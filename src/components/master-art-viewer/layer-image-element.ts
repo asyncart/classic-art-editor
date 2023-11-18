@@ -1,11 +1,9 @@
-import {
-  fetchIpfs,
-  getLayersFromMetadata,
-} from '@/components/master-art-viewer/utils';
+import { getLayersFromMetadata } from '@/components/master-art-viewer/utils';
 import {
   MasterArtNFTMetadata,
   LayerRelativeTokenIdAndLever,
 } from '@/types/shared';
+import { fetchIpfs } from '@/utils/ipfs';
 import seedrandom from 'seedrandom';
 
 export default async function getLayerImageElement(

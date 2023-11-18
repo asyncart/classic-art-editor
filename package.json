@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "NEXT_PUBLIC_ACTIVE_NETWORK=1 next dev",
     "build": "NEXT_PUBLIC_ACTIVE_NETWORK=1 next build",
-    "start": "next start"
+    "start": "next start",
+    "type-check": "tsc --pretty --noEmit"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^1.2.0",

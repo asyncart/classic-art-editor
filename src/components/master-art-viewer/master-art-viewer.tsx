@@ -5,7 +5,6 @@ import Spinner from '@/components/common/spinner';
 import getLayerImageElement from '@/components/master-art-viewer/layer-image-element';
 import {
   createGetLayerControlTokenValueFn,
-  fetchIpfs,
   getLayersFromMetadata,
 } from '@/components/master-art-viewer/utils';
 import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS } from '@/config';
@@ -13,7 +12,8 @@ import {
   MasterArtNFTMetadata,
   LayerRelativeTokenIdAndLever,
 } from '@/types/shared';
-import { getErrorMessage, sleep } from '@/utils';
+import { getErrorMessage, sleep } from '@/utils/common';
+import { fetchIpfs, getCustomIPFSGateway, setCustomIPFSGateway } from '@/utils/ipfs';
 import {
   Dispatch,
   FormEvent,
@@ -98,6 +98,8 @@ function FormScreen({ onSubmit }: FormScreenProps) {
     const tokenId = Number(e.target.tokenId.value);
     // @ts-ignore
     const tokenAddress = e.target.tokenAddress.value as Address;
+    // @ts-ignore
+    setCustomIPFSGateway(e.target.ipfsGatewayURL.value);
 
     const contract = getContract({
       address: tokenAddress,
@@ -154,6 +156,19 @@ function FormScreen({ onSubmit }: FormScreenProps) {
           name="tokenId"
           className="mt-1"
           placeholder="2567"
+        />
+      </div>
+      <div className="mt-2">
+        <label htmlFor="ipfsGatewayURL" className="text-sm font-bold">
+          IPFS Gateway (Optional)
+        </label>
+        <input
+          type="url"
+          id="ipfsGatewayURL"
+          name="ipfsGatewayURL"
+          className="mt-1"
+          placeholder="https://ipfs.io"
+          defaultValue={getCustomIPFSGateway()}
         />
       </div>
       <button
@@ -238,7 +253,9 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
                 ...
                 <br />
                 Loading {layer.activeStateURI} from{' '}
-                <a target='_blank' href={`https://${domain}`}>{domain}</a>
+                <a target="_blank" href={`https://${domain}`}>
+                  {domain}
+                </a>
               </>
             );
           }
