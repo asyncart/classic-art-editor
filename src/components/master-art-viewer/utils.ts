@@ -130,8 +130,12 @@ export function createGetLayerControlTokenValueFn(
     MasterArtNFTMetadata['async-attributes']
   >['unminted-token-values']
 ) {
+  const cache: { [layerTokenId: string]: readonly bigint[] } = {};
   return async (relativeLayerTokenId: number, leverId: number) => {
     const layerTokenId = masterTokenId + relativeLayerTokenId;
+    if (cache[layerTokenId])
+      return Number(cache[layerTokenId][2 + leverId * 3]);
+
     const v2contract = getContract({
       address: V2_CONTRACT_ADDRESS,
       abi: v2Abi,
@@ -141,8 +145,10 @@ export function createGetLayerControlTokenValueFn(
       .getControlToken([BigInt(layerTokenId)])
       .catch(() => null);
 
-    if (v2LayerControlTokens)
+    if (v2LayerControlTokens) {
+      cache[layerTokenId] = v2LayerControlTokens;
       return Number(v2LayerControlTokens[2 + leverId * 3]);
+    }
 
     // There are only 348 tokens [0 - 347] on the v1 contract and it only exists in production
     // Also V2 master pieces can have layers on v1 contract (e.g. master tokenId 23)
@@ -156,8 +162,10 @@ export function createGetLayerControlTokenValueFn(
         .getControlToken([BigInt(layerTokenId)])
         .catch(() => null);
 
-      if (v1LayerControlTokens)
+      if (v1LayerControlTokens) {
+        cache[layerTokenId] = v1LayerControlTokens;
         return Number(v1LayerControlTokens[2 + leverId * 3]);
+      }
     }
 
     // If the layer wasn't minted, take the default/static value.
@@ -165,7 +173,10 @@ export function createGetLayerControlTokenValueFn(
   };
 }
 
-export async function fetchIpfs(uri: string) {
+export async function fetchIpfs(
+  uri: string,
+  reportGateway?: (domain: string) => void
+) {
   const gatewayURLs = [
     'https://ipfs.io',
     'https://cloudflare-ipfs.com',
@@ -179,6 +190,7 @@ export async function fetchIpfs(uri: string) {
     // it won't resolve in the next minute so we don't want the user to wait and we skip to the next provider
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 60000);
+    reportGateway?.(gatewayURL.split('//')[1]);
 
     try {
       // Sometimes request to ipfs.io can fail with net::ERR_HTTP2_PROTOCOL_ERROR 200 (OK)

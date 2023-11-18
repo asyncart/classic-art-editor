@@ -22,7 +22,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ChevronsLeft, Info, X } from 'react-feather';
+import { ChevronsLeft, Info, X, XCircle } from 'react-feather';
 import { Address } from 'viem';
 import { getContract } from 'wagmi/actions';
 
@@ -64,12 +64,8 @@ export default function MasterArtViewer({
             <Info size={28} className="text-white mr-4" />
           </button>
         )}
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="ml-auto -mr-1"
-        >
-          <X size={36} className='text-white' />
+        <button onClick={onClose} aria-label="Close" className="ml-auto -mr-1">
+          <X size={36} className="text-white" />
         </button>
       </div>
       <MasterArtScreen artInfo={artInfo} setInfoPanelData={setInfoPanelData} />
@@ -187,7 +183,9 @@ const ERROR_MSG = 'Unexpected issue occured.\nPlease try again.';
 function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
   const isComponentMountedRef = useRef(true);
   const imagesContainer = useRef<HTMLDivElement>(null);
-  const [statusMessage, setStatusMessage] = useState('Loading NFT metadata...');
+  const [statusMessage, setStatusMessage] = useState<
+    string | React.JSX.Element
+  >('Loading NFT metadata...');
 
   const renderArtwork = async () => {
     try {
@@ -219,9 +217,6 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
 
       for (const layer of layers) {
         if (!isComponentMountedRef.current) return;
-        setStatusMessage(
-          `Loading layers ${layerImageElements.length + 1}/${layers.length}...`
-        );
 
         const isLayerVisible = await readTransformationProperty(
           layer.transformationProperties.visible === undefined
@@ -235,7 +230,18 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
           metadata.layout.version || 1,
           anchorLayerId =>
             layerImageElements.find(el => el.id === anchorLayerId)!,
-          readTransformationProperty
+          readTransformationProperty,
+          domain => {
+            setStatusMessage(
+              <>
+                Loading layers {layerImageElements.length + 1}/{layers.length}
+                ...
+                <br />
+                Loading {layer.activeStateURI} from{' '}
+                <a target='_blank' href={`https://${domain}`}>{domain}</a>
+              </>
+            );
+          }
         );
         layerImageElements.push(layerImageElement);
         layersForInfoPanel.push({ title: layer.id, uri: layer.activeStateURI });
@@ -262,26 +268,10 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
 
   return (
     <div ref={imagesContainer} className="relative mx-auto">
-      <div className="w-full fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+      <div className="w-full fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4">
         {statusMessage === ERROR_MSG ? (
           <>
-            {/* x-circle from Feather Icons */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="transparent"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-red mx-auto mb-8"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
+            <XCircle size={80} className="text-red mx-auto mb-8" />
             <p className="text-white text-center">
               {ERROR_MSG.split('\n')[0]}
               <br />
@@ -291,7 +281,7 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
         ) : (
           <>
             <Spinner size={80} className="text-purple mx-auto mt-12 mb-8" />
-            <p className="text-white text-center">
+            <p className="text-white text-center break-all">
               {statusMessage}
               <br />
               The process can take several minutes.

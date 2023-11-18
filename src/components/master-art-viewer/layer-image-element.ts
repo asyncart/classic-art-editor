@@ -14,12 +14,13 @@ export default async function getLayerImageElement(
   getAnchorLayer: (layerId: string) => HTMLImageElement,
   readTransformationProperty: (
     property: LayerRelativeTokenIdAndLever | number
-  ) => number | Promise<number>
+  ) => number | Promise<number>,
+  reportGateway: Parameters<typeof fetchIpfs>[1]
 ) {
   const filters = [];
   const transforms = [];
 
-  const imageResponse = await fetchIpfs(layer.activeStateURI);
+  const imageResponse = await fetchIpfs(layer.activeStateURI, reportGateway);
   const imageBlob = await imageResponse.blob();
 
   const image = new Image();
