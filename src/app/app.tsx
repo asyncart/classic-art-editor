@@ -9,7 +9,7 @@ import { publicProvider } from 'wagmi/providers/public';
 
 const { chains, publicClient } = configureChains(
   [__PROD__ ? mainnet : goerli],
-  [publicProvider()]
+  [publicProvider()],
 );
 
 const { connectors } = getDefaultWallets({

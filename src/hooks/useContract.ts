@@ -15,6 +15,6 @@ export default function useContract(address: Address) {
       isAddress(address) && !!abi && !!walletClient
         ? getContract({ address, abi, walletClient })
         : undefined,
-    [address, abi, walletClient]
+    [address, abi, walletClient],
   );
 }

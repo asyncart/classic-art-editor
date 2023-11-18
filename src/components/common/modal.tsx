@@ -39,7 +39,7 @@ export const ModalSkeleton = (props: ModalSkeletonProps) => {
       />
       {props.children}
     </div>,
-    document.body
+    document.body,
   );
 };
 
@@ -62,7 +62,7 @@ export const Modal = ({
     'rounded-xl w-full p-4 sm:p-8',
     className,
     !className.includes('max-w') && 'max-w-lg',
-    !className.includes('bg-') && 'bg-white dark:bg-charade'
+    !className.includes('bg-') && 'bg-white dark:bg-charade',
   );
 
   return (

@@ -12,7 +12,7 @@ export async function getLayersFromMetadata(
   metadata: MasterArtNFTMetadata,
   getLayerControlTokenValue: ReturnType<
     typeof createGetLayerControlTokenValueFn
-  >
+  >,
 ) {
   const layers: {
     id: string;
@@ -30,7 +30,7 @@ export async function getLayersFromMetadata(
     while ('states' in state) {
       const activeStateIndex = await getActiveStateIndex(
         state,
-        getLayerControlTokenValue
+        getLayerControlTokenValue,
       );
 
       // @ts-ignore
@@ -57,25 +57,25 @@ async function getActiveStateIndex(
   >,
   getLayerControlTokenValue: ReturnType<
     typeof createGetLayerControlTokenValueFn
-  >
+  >,
 ): Promise<number> {
   if ('token-id' in layer.states) {
     return getLayerControlTokenValue(
       layer.states['token-id'],
-      layer.states['lever-id']
+      layer.states['lever-id'],
     );
   }
 
   if ('currency_price' in layer.states) {
     const response = await fetch(
-      'https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD'
+      'https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD',
     );
     const { USD: ethInUSD } = (await response.json()) as {
       USD: number;
     };
     return (
       layer.states.currency_price.handler.rules.find(
-        ruleSet => ethInUSD >= ruleSet[0] && ethInUSD <= ruleSet[1]
+        (ruleSet) => ethInUSD >= ruleSet[0] && ethInUSD <= ruleSet[1],
       )?.[2] || 0
     );
   }
@@ -117,7 +117,7 @@ async function getActiveStateIndex(
     return handler.type === 'MODULO'
       ? measureValue % (handler.max_bound_inclusive + 1)
       : handler.rules.find(
-          ruleSet => measureValue >= ruleSet[0] && measureValue <= ruleSet[1]
+          (ruleSet) => measureValue >= ruleSet[0] && measureValue <= ruleSet[1],
         )?.[2] || 0;
   }
 
@@ -128,7 +128,7 @@ export function createGetLayerControlTokenValueFn(
   masterTokenId: number,
   unmintedTokenValuesMap: NonNullable<
     MasterArtNFTMetadata['async-attributes']
-  >['unminted-token-values']
+  >['unminted-token-values'],
 ) {
   const cache: { [layerTokenId: string]: readonly bigint[] } = {};
   return async (relativeLayerTokenId: number, leverId: number) => {

@@ -13,7 +13,11 @@ import {
   LayerRelativeTokenIdAndLever,
 } from '@/types/shared';
 import { getErrorMessage, sleep } from '@/utils/common';
-import { fetchIpfs, getCustomIPFSGateway, setCustomIPFSGateway } from '@/utils/ipfs';
+import {
+  fetchIpfs,
+  getCustomIPFSGateway,
+  setCustomIPFSGateway,
+} from '@/utils/ipfs';
 import {
   Dispatch,
   FormEvent,
@@ -208,23 +212,23 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
       const metadata = (await response.json()) as MasterArtNFTMetadata;
       const getLayerControlTokenValue = createGetLayerControlTokenValueFn(
         artInfo.tokenId,
-        metadata['async-attributes']?.['unminted-token-values']
+        metadata['async-attributes']?.['unminted-token-values'],
       );
 
       const readTransformationProperty = (
-        property: LayerRelativeTokenIdAndLever | number
+        property: LayerRelativeTokenIdAndLever | number,
       ) =>
         typeof property === 'number'
           ? property
           : getLayerControlTokenValue(
               property['token-id'],
-              property['lever-id']
+              property['lever-id'],
             );
 
       if (!isComponentMountedRef.current) return;
       const layers = await getLayersFromMetadata(
         metadata,
-        getLayerControlTokenValue
+        getLayerControlTokenValue,
       );
 
       const layersForInfoPanel: InfoPanelData['layers'] = [];
@@ -236,17 +240,17 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
         const isLayerVisible = await readTransformationProperty(
           layer.transformationProperties.visible === undefined
             ? 1
-            : layer.transformationProperties.visible
+            : layer.transformationProperties.visible,
         );
         if (!isLayerVisible) continue;
 
         const layerImageElement = await getLayerImageElement(
           layer,
           metadata.layout.version || 1,
-          anchorLayerId =>
-            layerImageElements.find(el => el.id === anchorLayerId)!,
+          (anchorLayerId) =>
+            layerImageElements.find((el) => el.id === anchorLayerId)!,
           readTransformationProperty,
-          domain => {
+          (domain) => {
             setStatusMessage(
               <>
                 Loading layers {layerImageElements.length + 1}/{layers.length}
@@ -256,9 +260,9 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
                 <a target="_blank" href={`https://${domain}`}>
                   {domain}
                 </a>
-              </>
+              </>,
             );
-          }
+          },
         );
         layerImageElements.push(layerImageElement);
         layersForInfoPanel.push({ title: layer.id, uri: layer.activeStateURI });
@@ -360,7 +364,7 @@ function InfoPanel({ title, layers, tokenURI, onClose }: InfoPanelProps) {
           View on IPFS
         </a>
         <h3 className="text-lg font-bold mt-4">Layers</h3>
-        {layers.map(layer => (
+        {layers.map((layer) => (
           <a
             href={`https://ipfs.io/ipfs/${layer.uri}`}
             target="_blank"

@@ -1,0 +1,8 @@
+pre-commit:
+  parallel: true
+  commands:
+    type-check:
+      run: npm run type-check
+    prettier:
+      glob: '*.{config.js,json,ts,tsx}'
+      run: npm exec -- prettier --log-level=silent --cache --write {staged_files} && git add {staged_files}

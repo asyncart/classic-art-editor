@@ -11,7 +11,7 @@ export function setCustomIPFSGateway(url: string | undefined) {
 
 export async function fetchIpfs(
   uri: string,
-  reportGateway?: (domain: string) => void
+  reportGateway?: (domain: string) => void,
 ) {
   const customGateway = getCustomIPFSGateway();
   const gatewayURLs = customGateway

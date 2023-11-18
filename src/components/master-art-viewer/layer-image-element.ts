@@ -11,9 +11,9 @@ export default async function getLayerImageElement(
   layoutVersion: MasterArtNFTMetadata['layout']['version'],
   getAnchorLayer: (layerId: string) => HTMLImageElement,
   readTransformationProperty: (
-    property: LayerRelativeTokenIdAndLever | number
+    property: LayerRelativeTokenIdAndLever | number,
   ) => number | Promise<number>,
-  reportGateway: Parameters<typeof fetchIpfs>[1]
+  reportGateway: Parameters<typeof fetchIpfs>[1],
 ) {
   const filters = [];
   const transforms = [];
@@ -28,7 +28,7 @@ export default async function getLayerImageElement(
   image.src = URL.createObjectURL(imageBlob);
 
   // Ensures that width and height properties are populated
-  await new Promise(resolve => {
+  await new Promise((resolve) => {
     if (image.complete) return resolve(undefined);
     image.onload = () => resolve(undefined);
   });
@@ -65,20 +65,20 @@ export default async function getLayerImageElement(
 
       if (layer.transformationProperties['orbit-rotation']) {
         const relativeRotation = await readTransformationProperty(
-          layer.transformationProperties['orbit-rotation']
+          layer.transformationProperties['orbit-rotation'],
         );
         const unrotatedRelativeX = relativeX;
         const rad = (-relativeRotation * Math.PI) / 180;
 
         relativeX = Math.round(
-          relativeX * Math.cos(rad) - relativeY * Math.sin(rad)
+          relativeX * Math.cos(rad) - relativeY * Math.sin(rad),
         );
 
         relativeY =
           layoutVersion === 1
             ? Math.round(relativeY * Math.cos(rad) + relativeX * Math.sin(rad))
             : Math.round(
-                relativeY * Math.cos(rad) + unrotatedRelativeX * Math.sin(rad)
+                relativeY * Math.cos(rad) + unrotatedRelativeX * Math.sin(rad),
               );
       }
       baseX += relativeX;
@@ -116,28 +116,28 @@ export default async function getLayerImageElement(
     } else {
       const degrees = await readTransformationProperty(fixedRotation);
       transforms.push(
-        `rotate(-${degrees * (fixedRotation.multiplier || 1)}deg)`
+        `rotate(-${degrees * (fixedRotation.multiplier || 1)}deg)`,
       );
     }
   }
 
   if (layer.transformationProperties.color?.hue) {
     const degrees = await readTransformationProperty(
-      layer.transformationProperties.color?.hue
+      layer.transformationProperties.color?.hue,
     );
     filters.push(`hue-rotate(${degrees}deg)`);
   }
 
   if (layer.transformationProperties.color?.brightness) {
     const brightness = await readTransformationProperty(
-      layer.transformationProperties.color?.brightness
+      layer.transformationProperties.color?.brightness,
     );
     if (brightness !== 0) filters.push(`brightness(${brightness / 100}%)`);
   }
 
   if (layer.transformationProperties.color?.saturation) {
     const saturation = await readTransformationProperty(
-      layer.transformationProperties.color?.saturation
+      layer.transformationProperties.color?.saturation,
     );
     if (saturation !== 0) filters.push(`saturate(${saturation}%)`);
   }
@@ -148,7 +148,7 @@ export default async function getLayerImageElement(
 
   if (opacity) {
     image.style.opacity = String(
-      (await readTransformationProperty(opacity)) / 100
+      (await readTransformationProperty(opacity)) / 100,
     );
   }
 

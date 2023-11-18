@@ -1,6 +1,6 @@
 // @ts-ignore
 export const ACTIVE_NETWORK: 1 | 5 = Number(
-  process.env.NEXT_PUBLIC_ACTIVE_NETWORK
+  process.env.NEXT_PUBLIC_ACTIVE_NETWORK,
 );
 
 export const __PROD__ = ACTIVE_NETWORK === 1;
