@@ -9,3 +9,11 @@ input {
 select {
   @apply block w-full h-10 text-sm bg-transparent pl-2 rounded-md border shadow-sm appearance-none;
 }
+
+.btn {
+  @apply text-sm font-bold py-2.5 rounded-md transition disabled:opacity-50 disabled:pointer-events-none;
+}
+
+.btn-black {
+  @apply text-white hover:text-black bg-black hover:bg-transparent border border-black;
+}

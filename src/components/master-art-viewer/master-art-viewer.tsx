@@ -2,22 +2,23 @@ import v1Abi from '@/abis/v1Abi';
 import v2Abi from '@/abis/v2Abi';
 import { Modal, ModalSkeleton } from '@/components/common/modal';
 import Spinner from '@/components/common/spinner';
-import getLayerImageElement from '@/components/master-art-viewer/layer-image-element';
+import LayerImageBuilder, {
+  LayerImageElement,
+} from '@/components/master-art-viewer/layer-image-builder';
 import {
   createGetLayerControlTokenValueFn,
   getLayersFromMetadata,
+  getMasterArtSize,
 } from '@/components/master-art-viewer/utils';
 import { V1_CONTRACT_ADDRESS, V2_CONTRACT_ADDRESS } from '@/config';
-import {
-  MasterArtNFTMetadata,
-  LayerRelativeTokenIdAndLever,
-} from '@/types/shared';
+import { MasterArtNFTMetadata } from '@/types/shared';
 import { getErrorMessage, sleep } from '@/utils/common';
 import {
   fetchIpfs,
   getCustomIPFSGateway,
   setCustomIPFSGateway,
 } from '@/utils/ipfs';
+import { toBlob } from 'html-to-image';
 import {
   Dispatch,
   FormEvent,
@@ -39,6 +40,7 @@ type MasterArtInfo = {
 type InfoPanelData = {
   title: string;
   layers: { title: string; uri: string }[];
+  masterArtSize: Awaited<ReturnType<typeof getMasterArtSize>>;
 };
 
 export default function MasterArtViewer({
@@ -65,7 +67,7 @@ export default function MasterArtViewer({
             aria-label="Artwork details"
             onClick={() => setIsInfoPanelOpen(true)}
           >
-            <Info size={28} className="text-white mr-4" />
+            <Info size={28} className="text-white" />
           </button>
         )}
         <button onClick={onClose} aria-label="Close" className="ml-auto -mr-1">
@@ -78,6 +80,7 @@ export default function MasterArtViewer({
           title={infoPanelData.title}
           layers={infoPanelData.layers}
           tokenURI={artInfo.tokenURI}
+          masterArtSize={infoPanelData.masterArtSize}
           onClose={() => setIsInfoPanelOpen(false)}
         />
       )}
@@ -115,7 +118,7 @@ function FormScreen({ onSubmit }: FormScreenProps) {
       // V1 contract won't fail for non existent token, it will just return an empty string.
       if (!tokenURI) throw new Error('URI query for nonexistent token');
 
-      // controlTokens exist for layers , this means it's layer token
+      // controlTokens exist for layers, this means it's layer token
       const controlTokens = await contract.read
         .getControlToken([BigInt(tokenId)])
         .catch(() => null);
@@ -177,7 +180,7 @@ function FormScreen({ onSubmit }: FormScreenProps) {
       </div>
       <button
         disabled={state === 'loading'}
-        className="w-full text-white hover:text-black text-sm font-bold bg-black hover:bg-transparent py-2.5 rounded-md border border-black transition disabled:opacity-50 disabled:pointer-events-none mt-4"
+        className="btn btn-black w-full mt-4"
       >
         Render Artwork
       </button>
@@ -197,11 +200,13 @@ type MasterArtScreenProps = {
   setInfoPanelData: Dispatch<SetStateAction<InfoPanelData | undefined>>;
 };
 
-const ERROR_MSG = 'Unexpected issue occured.\nPlease try again.';
+const artElementId = 'master-art';
+const ERROR_MESSAGE = 'Unexpected issue occured.\nPlease try again.';
 
 function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
+  // If the user closes the modal during rendering process, we want to stop further operations.
   const isComponentMountedRef = useRef(true);
-  const imagesContainer = useRef<HTMLDivElement>(null);
+  const artElementRef = useRef<HTMLDivElement>(null);
   const [statusMessage, setStatusMessage] = useState<
     string | React.JSX.Element
   >('Loading NFT metadata...');
@@ -210,20 +215,12 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
     try {
       const response = await fetchIpfs(artInfo.tokenURI);
       const metadata = (await response.json()) as MasterArtNFTMetadata;
+      const masterArtSize = await getMasterArtSize(metadata.image);
+
       const getLayerControlTokenValue = createGetLayerControlTokenValueFn(
         artInfo.tokenId,
         metadata['async-attributes']?.['unminted-token-values'],
       );
-
-      const readTransformationProperty = (
-        property: LayerRelativeTokenIdAndLever | number,
-      ) =>
-        typeof property === 'number'
-          ? property
-          : getLayerControlTokenValue(
-              property['token-id'],
-              property['lever-id'],
-            );
 
       if (!isComponentMountedRef.current) return;
       const layers = await getLayersFromMetadata(
@@ -231,51 +228,58 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
         getLayerControlTokenValue,
       );
 
-      const layersForInfoPanel: InfoPanelData['layers'] = [];
-      const layerImageElements: HTMLImageElement[] = [];
+      const artElement = artElementRef.current!;
+      const { width, height, resizeToFitScreenRatio } = masterArtSize;
+      artElement.style.width = `${width * resizeToFitScreenRatio}px`;
+      artElement.style.height = `${height * resizeToFitScreenRatio}px`;
 
       for (const layer of layers) {
         if (!isComponentMountedRef.current) return;
 
-        const isLayerVisible = await readTransformationProperty(
-          layer.transformationProperties.visible === undefined
-            ? 1
-            : layer.transformationProperties.visible,
+        const layerImageBuilder = new LayerImageBuilder(
+          layer.id,
+          layer.transformationProperties,
+          getLayerControlTokenValue,
         );
-        if (!isLayerVisible) continue;
 
-        const layerImageElement = await getLayerImageElement(
-          layer,
-          metadata.layout.version || 1,
-          (anchorLayerId) =>
-            layerImageElements.find((el) => el.id === anchorLayerId)!,
-          readTransformationProperty,
-          (domain) => {
-            setStatusMessage(
-              <>
-                Loading layers {layerImageElements.length + 1}/{layers.length}
-                ...
-                <br />
-                Loading {layer.activeStateURI} from{' '}
-                <a target="_blank" href={`https://${domain}`}>
-                  {domain}
-                </a>
-              </>,
-            );
-          },
+        layerImageBuilder.setLayoutVersion(metadata.layout.version || 1);
+        if (layer.anchor) {
+          const anchorImageEl = Array.from(artElement.children).find(
+            (el) => el.id === layer.anchor,
+          ) as LayerImageElement;
+          layerImageBuilder.setAnchorLayer(anchorImageEl);
+        }
+
+        await layerImageBuilder.loadImage(layer.activeStateURI, (domain) =>
+          setStatusMessage(
+            <>
+              Loading layers {artElement.children.length + 1}/{layers.length}
+              ...
+              <br />
+              Loading {layer.activeStateURI} from{' '}
+              <a target="_blank" href={`https://${domain}`}>
+                {domain}
+              </a>
+            </>,
+          ),
         );
-        layerImageElements.push(layerImageElement);
-        layersForInfoPanel.push({ title: layer.id, uri: layer.activeStateURI });
+
+        const layerImageElement = await layerImageBuilder.build();
+        layerImageElement.resize(resizeToFitScreenRatio);
+        artElement.appendChild(layerImageElement);
       }
 
-      imagesContainer.current!.replaceChildren(...layerImageElements);
       setInfoPanelData({
         title: metadata.name,
-        layers: layersForInfoPanel,
+        layers: layers.map((layer) => ({
+          title: layer.id,
+          uri: layer.activeStateURI,
+        })),
+        masterArtSize,
       });
     } catch (error) {
       console.error(error);
-      setStatusMessage(ERROR_MSG);
+      setStatusMessage(ERROR_MESSAGE);
     }
   };
 
@@ -288,46 +292,95 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
   }, []);
 
   return (
-    <div ref={imagesContainer} className="relative mx-auto">
-      <div className="w-full fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4">
-        {statusMessage === ERROR_MSG ? (
-          <>
-            <XCircle size={80} className="text-red mx-auto mb-8" />
-            <p className="text-white text-center">
-              {ERROR_MSG.split('\n')[0]}
-              <br />
-              {ERROR_MSG.split('\n')[1]}
-            </p>
-          </>
-        ) : (
-          <>
-            <Spinner size={80} className="text-purple mx-auto mt-12 mb-8" />
-            <p className="text-white text-center break-all">
-              {statusMessage}
-              <br />
-              The process can take several minutes.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+    <>
+      {statusMessage && (
+        <div className="w-full fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4">
+          {statusMessage === ERROR_MESSAGE ? (
+            <>
+              <XCircle size={80} className="text-red mx-auto mb-8" />
+              <p className="text-white text-center">
+                {ERROR_MESSAGE.split('\n')[0]}
+                <br />
+                {ERROR_MESSAGE.split('\n')[1]}
+              </p>
+            </>
+          ) : (
+            <>
+              <Spinner size={80} className="text-purple mx-auto mt-12 mb-8" />
+              <p className="text-white text-center break-all">
+                {statusMessage}
+                <br />
+                The process can take several minutes.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+      <div id={artElementId} ref={artElementRef} className="relative mx-auto" />
+    </>
   );
 }
 
-type InfoPanelProps = {
-  title: string;
-  layers: { title: string; uri: string }[];
+type InfoPanelProps = InfoPanelData & {
   tokenURI: string;
   onClose: VoidFunction;
 };
 
-function InfoPanel({ title, layers, tokenURI, onClose }: InfoPanelProps) {
+function InfoPanel({
+  title,
+  layers,
+  tokenURI,
+  masterArtSize,
+  onClose,
+}: InfoPanelProps) {
   const panelRef = useRef<HTMLElement>(null);
+  const [isImageDownloading, setIsImageDownloading] = useState(false);
+  const [downloadErrorMessage, setDownloadErrorMessage] = useState<string>();
 
   const handleClosePanel = async () => {
     panelRef.current?.classList.add('-translate-x-full');
     await sleep(300);
     onClose();
+  };
+
+  // We scale the image to original/full dimensions to download it
+  // Then we return it to the "fit the screen" dimensions
+  const handleDownloadArtwork = async () => {
+    setIsImageDownloading(true);
+    const { width, height, resizeToFitScreenRatio } = masterArtSize;
+    const artElement = document.querySelector<HTMLDivElement>(
+      `#${artElementId}`,
+    )!;
+    const layerImageElements = document.querySelectorAll<LayerImageElement>(
+      `#${artElementId} img`,
+    )!;
+
+    try {
+      // html-to-image library produces wrong result with margin
+      // https://github.com/bubkoo/html-to-image/issues/189
+      artElement.classList.remove('mx-auto');
+      artElement.style.width = `${width}px`;
+      artElement.style.height = `${height}px`;
+      layerImageElements.forEach((el) => el.resize(1));
+
+      const blob = await toBlob(artElement);
+      if (!blob) throw new Error();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${title}.png`;
+      link.click();
+    } catch (error) {
+      console.error(error);
+      setDownloadErrorMessage(ERROR_MESSAGE);
+    } finally {
+      artElement.classList.add('mx-auto');
+      artElement.style.width = `${width * resizeToFitScreenRatio}px`;
+      artElement.style.height = `${height * resizeToFitScreenRatio}px`;
+      layerImageElements.forEach((el) => el.resize(resizeToFitScreenRatio));
+      setIsImageDownloading(false);
+    }
   };
 
   useEffect(() => {
@@ -339,7 +392,7 @@ function InfoPanel({ title, layers, tokenURI, onClose }: InfoPanelProps) {
   return (
     <article
       ref={panelRef}
-      className="fixed top-0 left-0 z-50 bg-white w-full min-h-screen sm:max-w-sm transition -translate-x-full"
+      className="fixed top-0 left-0 z-50 bg-white w-full h-screen sm:max-w-sm transition -translate-x-full overflow-y-auto"
     >
       <header className="flex justify-between items-center p-4">
         <h2 className="text-2xl font-bold">Details</h2>
@@ -352,7 +405,7 @@ function InfoPanel({ title, layers, tokenURI, onClose }: InfoPanelProps) {
         </button>
       </header>
       <hr />
-      <section className="px-4 mt-6">
+      <section className="px-4 mt-6 pb-6">
         <h3 className="text-lg font-bold">Title</h3>
         <p>{title}</p>
         <h3 className="text-lg font-bold mt-4">Metadata</h3>
@@ -364,15 +417,31 @@ function InfoPanel({ title, layers, tokenURI, onClose }: InfoPanelProps) {
           View on IPFS
         </a>
         <h3 className="text-lg font-bold mt-4">Layers</h3>
-        {layers.map((layer) => (
-          <a
-            href={`https://ipfs.io/ipfs/${layer.uri}`}
-            target="_blank"
-            className="block underline"
-          >
-            {layer.title}
-          </a>
-        ))}
+        <ol className="list-decimal list-inside">
+          {layers.map((layer) => (
+            <li key={layer.title}>
+              <a
+                href={`https://ipfs.io/ipfs/${layer.uri}`}
+                target="_blank"
+                className="underline"
+              >
+                {layer.title}
+              </a>
+            </li>
+          ))}
+        </ol>
+        <button
+          onClick={handleDownloadArtwork}
+          className="btn btn-black w-full mt-4"
+          disabled={isImageDownloading}
+        >
+          Download Artwork
+        </button>
+        {downloadErrorMessage && (
+          <p className="text-red text-sm text-center mt-2">
+            {downloadErrorMessage}
+          </p>
+        )}
       </section>
     </article>
   );

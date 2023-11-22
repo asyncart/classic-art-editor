@@ -5,8 +5,34 @@ import {
   MasterArtNFTMetadata,
   LayerTransformationProperties,
 } from '@/types/shared';
+import { fetchIpfs } from '@/utils/ipfs';
 import seedrandom from 'seedrandom';
 import { getContract } from 'wagmi/actions';
+
+export async function getMasterArtSize(uri: string) {
+  const imageResponse = await fetchIpfs(uri);
+  const imageBlob = await imageResponse.blob();
+
+  const image = new Image();
+  image.src = URL.createObjectURL(imageBlob);
+
+  // Ensures that width and height properties are populated
+  await new Promise((resolve) => {
+    if (image.complete) return resolve(undefined);
+    image.onload = () => resolve(undefined);
+  });
+
+  const resizeToFitScreenRatio = Math.min(
+    window.innerWidth / image.width,
+    window.innerHeight / image.height,
+  );
+
+  return {
+    width: image.width,
+    height: image.height,
+    resizeToFitScreenRatio,
+  };
+}
 
 export async function getLayersFromMetadata(
   metadata: MasterArtNFTMetadata,
@@ -39,6 +65,15 @@ export async function getLayersFromMetadata(
 
     // @ts-ignore
     const { id, label, uri, anchor, ...transformationProperties } = state;
+    if (transformationProperties.visible === 0) continue;
+    if (typeof transformationProperties.visible === 'object') {
+      const isLayerVisible = await getLayerControlTokenValue(
+        transformationProperties.visible['token-id'],
+        transformationProperties.visible['lever-id'],
+      );
+      if (!isLayerVisible) continue;
+    }
+
     layers.push({
       id: layer.id,
       anchor,

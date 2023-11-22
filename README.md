@@ -10,4 +10,5 @@
 
 ## Other
 
+- [Tasks Spreadsheet](https://docs.google.com/spreadsheets/d/1YMPGMTZviCzwGL218xfXlK6mHLrFydaDm4xErVoh7nU/edit#gid=1771704050)
 - [Requirements specification](https://docs.google.com/presentation/d/1eTgp_3tGzUVk7xf-Ufwj47bTFyrxOLOFanEWhzkT4K4)

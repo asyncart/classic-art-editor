@@ -1,4 +1,6 @@
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { ArrowRightCircle } from 'react-feather';
+import { useAccount } from 'wagmi';
 
 type Props = {
   title: string;
@@ -8,9 +10,17 @@ type Props = {
 };
 
 export default function ToolBox({ title, description, icon, onClick }: Props) {
+  const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
+
+  const handleClick = () => {
+    if (!address) return openConnectModal?.();
+    onClick();
+  };
+
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
       className="cursor-pointer rounded-lg p-5 shadow-soft-drop md:hover:scale-[103%] transition"
     >
       <div className="flex items-center justify-between">
