@@ -10,8 +10,6 @@ interface ModalSkeletonProps extends HTMLAttributes<HTMLDivElement> {
 export const ModalSkeleton = (props: ModalSkeletonProps) => {
   const dialogRef = useRef(null);
 
-  // useLockBodyScroll();
-
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') props.onClose();
   };

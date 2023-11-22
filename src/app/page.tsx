@@ -27,10 +27,10 @@ export default function Home() {
             height={logo.height}
             className="w-24"
           />
-          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-[#C362FF] to-[#5D45F7] font-bold ml-3">
+          <h1 className="hidden sm:block text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-[#C362FF] to-[#5D45F7] font-bold ml-3">
             Classic Art Editor
           </h1>
-          <ConnectButton />
+          <ConnectButton accountStatus="address" showBalance={false} />
         </nav>
       </header>
       <main className="container px-4">

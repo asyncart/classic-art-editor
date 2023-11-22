@@ -60,7 +60,7 @@ export default function MasterArtViewer({
     );
 
   return (
-    <ModalSkeleton className="overflow-auto" onClose={onClose}>
+    <ModalSkeleton className="overflow-auto !px-0" onClose={onClose}>
       <div className="fixed top-0 right-0 z-20 w-full flex justify-between p-6 md:p-8">
         {infoPanelData && (
           <button
@@ -230,6 +230,10 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
 
       const artElement = artElementRef.current!;
       const { width, height, resizeToFitScreenRatio } = masterArtSize;
+      const marginTop =
+        (window.innerHeight - height * resizeToFitScreenRatio) / 2;
+
+      artElement.style.marginTop = marginTop > 0 ? `${marginTop}px` : `0px`;
       artElement.style.width = `${width * resizeToFitScreenRatio}px`;
       artElement.style.height = `${height * resizeToFitScreenRatio}px`;
 
@@ -269,6 +273,7 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
         artElement.appendChild(layerImageElement);
       }
 
+      setStatusMessage('');
       setInfoPanelData({
         title: metadata.name,
         layers: layers.map((layer) => ({
