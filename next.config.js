@@ -1,3 +1,7 @@
+const withBundleAnalyzer = require('next-bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
@@ -7,11 +11,11 @@ const nextConfig = {
    * MetaMask uses Cloudflare (cloudflare-eth.com) as RPC provider which often rate limits developer's machine due to large number of requests.
    */
   reactStrictMode: false,
-  webpack: config => {
+  webpack: (config) => {
     // https://github.com/WalletConnect/walletconnect-monorepo/issues/1908
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
     return config;
   },
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);

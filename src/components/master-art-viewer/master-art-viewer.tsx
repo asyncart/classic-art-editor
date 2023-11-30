@@ -74,7 +74,13 @@ export default function MasterArtViewer({
           <X size={36} className="text-white" />
         </button>
       </div>
-      <MasterArtScreen artInfo={artInfo} setInfoPanelData={setInfoPanelData} />
+      <MasterArtScreen
+        artInfo={artInfo}
+        setInfoPanelData={(panelData) => {
+          setInfoPanelData(panelData);
+          setIsInfoPanelOpen(true);
+        }}
+      />
       {isInfoPanelOpen && infoPanelData && (
         <InfoPanel
           title={infoPanelData.title}
@@ -273,6 +279,7 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
         artElement.appendChild(layerImageElement);
       }
 
+      artElement.classList.remove('-z-20');
       setStatusMessage('');
       setInfoPanelData({
         title: metadata.name,
@@ -321,7 +328,11 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
           )}
         </div>
       )}
-      <div id={artElementId} ref={artElementRef} className="relative mx-auto" />
+      <div
+        id={artElementId}
+        ref={artElementRef}
+        className="relative mx-auto -z-20"
+      />
     </>
   );
 }
