@@ -8,8 +8,8 @@ import seedrandom from 'seedrandom';
 
 /**
  * LayerImageElement is constructed with Builder design pattern.
- * We can't have our class directly extend HTMLImageElement since it would require us to switch to Web Components.
- * (see TypeError: Illegal constructor)
+ * We can't have our class directly extend HTMLImageElement since it would require us to switch to Web Components. (see TypeError: Illegal constructor)
+ * It's also cleaner to separate object construction from representation in this case. (hence builder pattern)
  */
 
 export interface LayerImageElement extends HTMLImageElement {
@@ -22,7 +22,7 @@ export default class LayerImageBuilder {
   private image: HTMLImageElement;
 
   private layoutVersion = 1;
-  private anchorLayer: null | HTMLImageElement = null;
+  private anchorLayer: null | LayerImageElement = null;
 
   private transformationProperties: LayerTransformationProperties;
   private getLayerControlTokenValue: ReturnType<
@@ -44,7 +44,7 @@ export default class LayerImageBuilder {
     this.getLayerControlTokenValue = getLayerControlTokenValue;
   }
 
-  setAnchorLayer(anchorLayer: HTMLImageElement) {
+  setAnchorLayer(anchorLayer: LayerImageElement) {
     this.anchorLayer = anchorLayer;
   }
 
@@ -215,11 +215,11 @@ export default class LayerImageBuilder {
 
     if (!this.anchorLayer) return;
 
-    const topMargin = Number(this.anchorLayer.style.top.split('px')[0]) || 0;
-    const leftMargin = Number(this.anchorLayer.style.left.split('px')[0]) || 0;
+    let baseX =
+      this.anchorLayer.naturalLeft + this.anchorLayer.naturalWidth / 2;
 
-    let baseX = leftMargin + this.anchorLayer.naturalWidth / 2;
-    let baseY = topMargin + this.anchorLayer.naturalHeight / 2;
+    let baseY =
+      this.anchorLayer.naturalTop + this.anchorLayer.naturalHeight / 2;
 
     if (this.transformationProperties['relative-position']) {
       const { x, y } = this.transformationProperties['relative-position'];
