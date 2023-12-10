@@ -131,14 +131,36 @@ export type LayerArtNFTMetadata = {
   'async-attributes'?: {
     artists: string[];
   };
-  controls?: {
-    minValue: string;
-    maxValue: string;
-    label: string;
-    controlType: string;
-    stateLabels: string[];
-    startValue: number;
-  }[];
+  controls?: (
+    | {
+        minValue: number;
+        maxValue: number;
+        startValue: number;
+        label: string;
+        controlType:
+          | 'ALPHA'
+          | 'BLUE'
+          | 'BRIGHTNESS'
+          | 'GREEN'
+          | 'GREYSCALE'
+          | 'HUE'
+          | 'POSITION'
+          | 'RED'
+          | 'REFLECT'
+          | 'ROTATION'
+          | 'SATURATION'
+          | 'SCALE'
+          | 'VISIBILITY';
+      }
+    | {
+        minValue: number;
+        maxValue: number;
+        startValue: number;
+        label: string;
+        controlType: 'STATE';
+        stateLabels: string[];
+      }
+  )[];
   master: string;
 };
 

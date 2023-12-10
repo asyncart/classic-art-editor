@@ -7,6 +7,7 @@ import MasterArtViewer from '@/components/master-art-viewer/master-art-viewer';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import ToolBox from '@/components/tool-box';
 import { useState } from 'react';
+import LayerArtChanger from '@/components/layer-art-updater/layer-art-changer';
 
 enum MODAL {
   NONE,
@@ -56,6 +57,9 @@ export default function Home() {
       <footer className="container"></footer>
       {modal === MODAL.VIEW_MASTER_ARTWORK && (
         <MasterArtViewer onClose={() => setModal(MODAL.NONE)} />
+      )}
+      {modal === MODAL.UPDATE_LAYER_ARTWORK && (
+        <LayerArtChanger onClose={() => setModal(MODAL.NONE)} />
       )}
     </div>
   );

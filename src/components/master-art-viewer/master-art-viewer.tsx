@@ -19,14 +19,7 @@ import {
   setCustomIPFSGateway,
 } from '@/utils/ipfs';
 import { toBlob } from 'html-to-image';
-import {
-  Dispatch,
-  FormEvent,
-  SetStateAction,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { ChevronsLeft, Info, X, XCircle } from 'react-feather';
 import { Address } from 'viem';
 import { getContract } from 'wagmi/actions';
@@ -168,7 +161,7 @@ function FormScreen({ onSubmit }: FormScreenProps) {
           id="tokenId"
           name="tokenId"
           className="mt-1"
-          placeholder="2567"
+          placeholder="516"
         />
       </div>
       <div className="mt-2">
@@ -203,10 +196,10 @@ function FormScreen({ onSubmit }: FormScreenProps) {
 
 type MasterArtScreenProps = {
   artInfo: MasterArtInfo;
-  setInfoPanelData: Dispatch<SetStateAction<InfoPanelData | undefined>>;
+  setInfoPanelData: (infoPanelData: InfoPanelData) => void;
 };
 
-const artElementId = 'master-art';
+const ART_ELEMENT_ID = 'master-art';
 const ERROR_MESSAGE = 'Unexpected issue occured.\nPlease try again.';
 
 function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
@@ -329,7 +322,7 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
         </div>
       )}
       <div
-        id={artElementId}
+        id={ART_ELEMENT_ID}
         ref={artElementRef}
         className="relative mx-auto -z-20"
       />
@@ -365,10 +358,10 @@ function InfoPanel({
     setIsImageDownloading(true);
     const { width, height, resizeToFitScreenRatio } = masterArtSize;
     const artElement = document.querySelector<HTMLDivElement>(
-      `#${artElementId}`,
+      `#${ART_ELEMENT_ID}`,
     )!;
     const layerImageElements = document.querySelectorAll<LayerImageElement>(
-      `#${artElementId} img`,
+      `#${ART_ELEMENT_ID} img`,
     )!;
 
     try {
