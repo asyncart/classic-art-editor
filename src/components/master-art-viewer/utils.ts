@@ -35,7 +35,9 @@ export async function getMasterArtSize(uri: string) {
 }
 
 export async function getLayersFromMetadata(
-  metadata: MasterArtNFTMetadata,
+  metadataLayers:
+    | MasterArtNFTMetadata['layout']['layers']
+    | NonNullable<MasterArtNFTMetadata['audio-layout']>['layers'],
   getLayerControlTokenValue: ReturnType<
     typeof createGetLayerControlTokenValueFn
   >,
@@ -47,7 +49,7 @@ export async function getLayersFromMetadata(
     transformationProperties: LayerTransformationProperties;
   }[] = [];
 
-  for (const layer of metadata.layout.layers) {
+  for (const layer of metadataLayers) {
     // Skip empty layer (usually the first layer in a piece, required by Jimp on renderer server)
     if (!('uri' in layer) && !('states' in layer)) continue;
 
@@ -86,10 +88,9 @@ export async function getLayersFromMetadata(
 }
 
 async function getActiveStateIndex(
-  layer: Extract<
-    MasterArtNFTMetadata['layout']['layers'][number],
-    { states: any }
-  >,
+  layer:
+    | Extract<MasterArtNFTMetadata['layout']['layers'][number], { states: any }>
+    | NonNullable<MasterArtNFTMetadata['audio-layout']>['layers'][number],
   getLayerControlTokenValue: ReturnType<
     typeof createGetLayerControlTokenValueFn
   >,

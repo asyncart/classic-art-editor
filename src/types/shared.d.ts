@@ -214,6 +214,20 @@ export type MasterArtNFTMetadata = {
         }
     )[];
   };
+  'audio-layout'?: {
+    mastering: {
+      filters: string[];
+      bitrate: string;
+    };
+    layers: {
+      id: string;
+      states: {
+        options: { uri: string }[];
+        'token-id': number;
+        'lever-id': number;
+      };
+    }[];
+  };
   'async-attributes'?: {
     artists: string[];
     forced_render_hours?: number[];

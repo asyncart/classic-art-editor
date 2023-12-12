@@ -32,8 +32,11 @@ type MasterArtInfo = {
 
 type InfoPanelData = {
   title: string;
-  layers: { title: string; uri: string }[];
   masterArtSize: Awaited<ReturnType<typeof getMasterArtSize>>;
+  layers: { id: string; activeStateURI: string }[];
+  stems?: { id: string; activeStateURI: string }[];
+  audioFilters?: string[];
+  audioBitrate?: string;
 };
 
 export default function MasterArtViewer({
@@ -77,9 +80,12 @@ export default function MasterArtViewer({
       {isInfoPanelOpen && infoPanelData && (
         <InfoPanel
           title={infoPanelData.title}
-          layers={infoPanelData.layers}
           tokenURI={artInfo.tokenURI}
           masterArtSize={infoPanelData.masterArtSize}
+          layers={infoPanelData.layers}
+          stems={infoPanelData.stems}
+          audioFilters={infoPanelData.audioFilters}
+          audioBitrate={infoPanelData.audioBitrate}
           onClose={() => setIsInfoPanelOpen(false)}
         />
       )}
@@ -222,8 +228,15 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
       );
 
       if (!isComponentMountedRef.current) return;
+      const stems = metadata['audio-layout']
+        ? await getLayersFromMetadata(
+            metadata['audio-layout'].layers,
+            getLayerControlTokenValue,
+          )
+        : undefined;
+
       const layers = await getLayersFromMetadata(
-        metadata,
+        metadata.layout.layers,
         getLayerControlTokenValue,
       );
 
@@ -276,11 +289,11 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
       setStatusMessage('');
       setInfoPanelData({
         title: metadata.name,
-        layers: layers.map((layer) => ({
-          title: layer.id,
-          uri: layer.activeStateURI,
-        })),
+        layers,
         masterArtSize,
+        stems,
+        audioFilters: metadata['audio-layout']?.mastering.filters,
+        audioBitrate: metadata['audio-layout']?.mastering.bitrate,
       });
     } catch (error) {
       console.error(error);
@@ -340,6 +353,9 @@ function InfoPanel({
   layers,
   tokenURI,
   masterArtSize,
+  stems,
+  audioFilters,
+  audioBitrate,
   onClose,
 }: InfoPanelProps) {
   const panelRef = useRef<HTMLElement>(null);
@@ -428,17 +444,55 @@ function InfoPanel({
         <h3 className="text-lg font-bold mt-4">Layers</h3>
         <ol className="list-decimal list-inside">
           {layers.map((layer) => (
-            <li key={layer.title}>
+            <li key={layer.id}>
               <a
-                href={`https://ipfs.io/ipfs/${layer.uri}`}
+                href={`https://ipfs.io/ipfs/${layer.activeStateURI}`}
                 target="_blank"
                 className="underline"
               >
-                {layer.title}
+                {layer.id}
               </a>
             </li>
           ))}
         </ol>
+        {stems && (
+          <>
+            <h3 className="text-lg font-bold mt-4">Stems</h3>
+            <ol className="list-decimal list-inside">
+              {stems.map((stem) => (
+                <li key={stem.id}>
+                  <a
+                    href={`https://ipfs.io/ipfs/${stem.activeStateURI}`}
+                    target="_blank"
+                    className="underline"
+                  >
+                    {stem.id}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+        {audioFilters && (
+          <>
+            <h3 className="text-lg font-bold mt-4">Mastering Steps (FFmpeg)</h3>
+            <ol className="list-decimal list-inside">
+              {audioFilters.map((audioFilter) => (
+                <li key={audioFilter}>
+                  <p className="inline-flex w-[19rem] overflow-x-auto">
+                    {audioFilter}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+        {audioBitrate && (
+          <>
+            <h3 className="text-lg font-bold mt-4">Bitrate</h3>
+            <p>{audioBitrate}</p>
+          </>
+        )}
         <button
           onClick={handleDownloadArtwork}
           className="btn btn-black w-full mt-4"

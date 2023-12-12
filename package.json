@@ -24,7 +24,7 @@
     "react-feather": "^2.0.10",
     "seedrandom": "^3.0.5",
     "viem": "^1.19.13",
-    "wagmi": "^1.4.10"
+    "wagmi": "^1.4.11"
   },
   "devDependencies": {
     "@types/node": "^20.10.4",

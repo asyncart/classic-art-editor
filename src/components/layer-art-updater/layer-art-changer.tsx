@@ -123,7 +123,7 @@ function FormScreen({ onSubmit }: FormScreenProps) {
           id="tokenId"
           name="tokenId"
           className="mt-1"
-          placeholder="516"
+          placeholder="289"
         />
       </div>
       <div className="mt-2">
@@ -244,7 +244,7 @@ function ChangeModal({
       BigInt(tokenId),
     ]);
 
-    setControls(layerMetadata.controls);
+    setControls(layerMetadata.controls || []);
     setControlTokenValues(controlTokenValues);
   };
 
