@@ -244,7 +244,12 @@ function ChangeModal({
       BigInt(tokenId),
     ]);
 
-    setControls(layerMetadata.controls || []);
+    let controls =
+      layerMetadata.controls ||
+      // @ts-ignore
+      (await import('@/layer-controls.json'))[`${tokenAddress}-${tokenId}`];
+
+    setControls(controls);
     setControlTokenValues(controlTokenValues);
   };
 
