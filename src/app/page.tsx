@@ -48,7 +48,7 @@ export default function Home() {
           />
           <ToolBox
             icon={updateLayerArtIcon}
-            title="Update Layer Artwork"
+            title="Update Layer"
             description="Lorem ipsum dolor sit, amet consectetur adipisicing elit. Fugiat eius vel consectetur! Non beatae autem sapiente illum blanditiis eligendi dignissimos?"
             onClick={() => setModal(MODAL.UPDATE_LAYER_ARTWORK)}
           />
