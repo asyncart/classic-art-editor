@@ -27,7 +27,7 @@ export default function ToolBox({ title, description, icon, onClick }: Props) {
         <img src={icon.src} width={icon.width} height={icon.height} />
         <ArrowRightCircle size={24} className="opacity-50" />
       </div>
-      <h3 className="text-lg mt-4 mb-2">{title}</h3>
+      <h3 className="text-lg font-bold mt-4 mb-2">{title}</h3>
       <p className="text-sm text-grey">{description}</p>
     </div>
   );

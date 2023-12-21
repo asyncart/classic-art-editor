@@ -167,6 +167,8 @@ function ChangeModal({
     'default' | 'loading' | 'success' | { error: string }
   >('default');
 
+  const [title, setTitle] = useState<string>();
+  const [imageSrc, setImageSrc] = useState<string>();
   const [controls, setControls] = useState<LayerArtNFTMetadata['controls']>();
   const [controlTokenValues, setControlTokenValues] =
     useState<readonly bigint[]>();
@@ -249,8 +251,13 @@ function ChangeModal({
       // @ts-ignore
       (await import('@/layer-controls.json'))[`${tokenAddress}-${tokenId}`];
 
+    setTitle(layerMetadata.name);
     setControls(controls);
     setControlTokenValues(controlTokenValues);
+
+    const imageResponse = await fetchIpfs(layerMetadata.image);
+    const imageBlob = await imageResponse.blob();
+    setImageSrc(URL.createObjectURL(imageBlob));
   };
 
   useEffect(() => {
@@ -278,8 +285,24 @@ function ChangeModal({
     );
 
   return (
-    <Modal title="Change Layer Artwork" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-3">
+    <Modal
+      title={
+        <>
+          <span className="whitespace-nowrap mr-3">Token ID: {tokenId}</span>
+          <span className="inline-block text-grey2 pr-8 break-all">
+            {title}
+          </span>
+        </>
+      }
+      titleClassName="font-bold"
+      onClose={onClose}
+    >
+      {imageSrc ? (
+        <img src={imageSrc} alt={title} className="max-w-72 max-h-48 mx-auto" />
+      ) : (
+        <div className="size-48 bg-grey2 mx-auto rounded animate-pulse" />
+      )}
+      <form onSubmit={handleSubmit} className="space-y-3 mt-5">
         {controls.map((control, index) =>
           control.controlType === 'STATE' ? (
             <div key={index}>
@@ -327,7 +350,7 @@ function ChangeModal({
           disabled={state === 'loading'}
           className="btn btn-black w-full !mt-4"
         >
-          Apply Changes
+          Update Layer
         </button>
         {typeof state === 'object' && (
           <p className="text-red text-sm text-center mt-3">{state.error}</p>
