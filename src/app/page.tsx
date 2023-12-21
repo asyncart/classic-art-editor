@@ -28,7 +28,7 @@ export default function Home() {
             height={logo.height}
             className="w-24"
           />
-          <h1 className="hidden sm:block text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-[#C362FF] to-[#5D45F7] font-bold ml-3">
+          <h1 className="hidden sm:block text-2xl font-bold ml-3">
             Classic Art Editor
           </h1>
           <ConnectButton accountStatus="address" showBalance={false} />
@@ -36,8 +36,20 @@ export default function Home() {
       </header>
       <main className="container px-4">
         <p>
-          Some explainer text on what happened, why we need this editor and how
-          to use it / tools it offers.
+          <span>
+            This portal was to allow anyone to continue to view and interact
+            with all Master/Layer based artworks created on Async.
+          </span>
+          <br />
+          <span>Repository: </span>
+          <a
+            target="_blank"
+            rel="noreferrer noopener"
+            href="https://github.com/asyncart/classic-art-editor"
+            className="underline"
+          >
+            https://github.com/asyncart/classic-art-editor
+          </a>
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mt-12">
           <ToolBox
