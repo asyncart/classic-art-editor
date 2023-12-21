@@ -32,6 +32,7 @@ type MasterArtInfo = {
 
 type InfoPanelData = {
   title: string;
+  artists: string[];
   masterArtSize: Awaited<ReturnType<typeof getMasterArtSize>>;
   layers: { id: string; activeStateURI: string }[];
   stems?: { id: string; activeStateURI: string }[];
@@ -80,6 +81,7 @@ export default function MasterArtViewer({
       {isInfoPanelOpen && infoPanelData && (
         <InfoPanel
           title={infoPanelData.title}
+          artists={infoPanelData.artists}
           tokenURI={artInfo.tokenURI}
           masterArtSize={infoPanelData.masterArtSize}
           layers={infoPanelData.layers}
@@ -289,6 +291,7 @@ function MasterArtScreen({ artInfo, setInfoPanelData }: MasterArtScreenProps) {
       setStatusMessage('');
       setInfoPanelData({
         title: metadata.name,
+        artists: metadata['async-attributes']?.artists || [],
         layers,
         masterArtSize,
         stems,
@@ -350,6 +353,7 @@ type InfoPanelProps = InfoPanelData & {
 
 function InfoPanel({
   title,
+  artists,
   layers,
   tokenURI,
   masterArtSize,
@@ -433,6 +437,22 @@ function InfoPanel({
       <section className="px-4 mt-6 pb-6">
         <h3 className="text-lg font-bold">Title</h3>
         <p>{title}</p>
+        <h3 className="text-lg font-bold mt-4">
+          {artists.length === 1 ? 'Artist' : 'Artists'}
+        </h3>
+        {artists.length === 0 && <p>N/A</p>}
+        {artists.length === 1 && (
+          <p className="overflow-x-auto">{artists[0]}</p>
+        )}
+        {artists.length > 1 && (
+          <ul className="list-disc list-inside overflow-x-auto">
+            {artists.map((artist) => (
+              <li key={artist} className="whitespace-nowrap">
+                {artist}
+              </li>
+            ))}
+          </ul>
+        )}
         <h3 className="text-lg font-bold mt-4">Metadata</h3>
         <a
           href={`https://ipfs.io/ipfs/${tokenURI}`}
