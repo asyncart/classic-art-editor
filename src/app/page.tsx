@@ -43,13 +43,13 @@ export default function Home() {
           <ToolBox
             icon={viewMasterArtIcon}
             title="View Master Artwork"
-            description="Lorem ipsum dolor sit, amet consectetur adipisicing elit. Fugiat eius vel consectetur! Non beatae autem sapiente illum blanditiis eligendi dignissimos?"
+            description="View the current state for any Async Art Master token."
             onClick={() => setModal(MODAL.VIEW_MASTER_ARTWORK)}
           />
           <ToolBox
             icon={updateLayerArtIcon}
             title="Update Layer"
-            description="Lorem ipsum dolor sit, amet consectetur adipisicing elit. Fugiat eius vel consectetur! Non beatae autem sapiente illum blanditiis eligendi dignissimos?"
+            description="Update the values for a Layer token that you own."
             onClick={() => setModal(MODAL.UPDATE_LAYER_ARTWORK)}
           />
         </div>
