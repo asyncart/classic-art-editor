@@ -14,6 +14,7 @@ const config: Config = {
         red: '#c53535',
         purple: '#4939ff',
         green: '#83D0B0',
+        alabaster: '#fafafa',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

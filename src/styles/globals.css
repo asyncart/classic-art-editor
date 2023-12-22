@@ -10,6 +10,10 @@ select {
   @apply block w-full h-10 text-sm bg-transparent pl-2 rounded-md border shadow-sm appearance-none;
 }
 
+details summary::marker {
+  content: '';
+}
+
 .btn {
   @apply text-sm font-bold py-2.5 rounded-md transition disabled:opacity-50 disabled:pointer-events-none;
 }
