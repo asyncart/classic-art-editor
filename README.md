@@ -6,7 +6,7 @@
 
 1. Install dependencies `npm i`
 2. Start dev server `npm run dev`
-3. Branch off of `staging` and submit PR
+3. Branch off of `main` and submit PR
 
 ## layer-controls.json
 
