@@ -39,9 +39,29 @@ export default function Home() {
         <section>
           <p>
             <span>
-              This portal was to allow anyone to continue to view and interact
-              with all Master/Layer based artworks created on Async.
+              What a ride it’s been. Thank you to everyone who used Async over
+              the years. We were surprised over and over by the unique
+              creativity this platform attracted from artists, musicians and
+              collectors. We started Async with the mission to create something
+              wholly new for artists, a concept that fundamentally couldn’t
+              exist without the blockchain. And in doing so, hoped it would
+              spark new ideas, build communities, and inspire people to do more
+              with NFTs than just own them. Looking back, we can confidently say
+              we’ve achieved all those goals and will miss the community and
+              artists that helped get us there. And although we’re saying
+              goodbye, your art lives on as a testament to that.
             </span>
+            <br />
+            <br />
+            <span>
+              We created this portal to allow anyone to continue to interact
+              with Master/Layer based classic artworks. You can look up both
+              Master and Layers by finding their token ID.
+            </span>
+            <br />
+            <br />
+            <span>Thank you again from all of us at Async ❤️</span>
+            <br />
             <br />
             <span>Repository: </span>
             <a
