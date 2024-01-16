@@ -127,6 +127,23 @@ export default function Home() {
               .
             </p>
           </FAQ>
+          <FAQ
+            title="How Can I Locate and Repin Content to IPFS?"
+            className="mt-4"
+          >
+            <p className="pl-3 p-2">
+              See our article on this{' '}
+              <a
+                href="https://medium.com/@AsyncArt/how-to-locate-and-repin-nft-content-ea09e4bd0eaf"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-purple underline"
+              >
+                here
+              </a>
+              .
+            </p>
+          </FAQ>
         </section>
       </main>
       {modal === MODAL.VIEW_MASTER_ARTWORK && (
